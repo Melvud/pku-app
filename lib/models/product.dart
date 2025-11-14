@@ -1,3 +1,4 @@
+// lib/models/product.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Product {
@@ -13,6 +14,8 @@ class Product {
   final String? notes;
   final String? source;
   final DateTime lastUpdated;
+  final String? googleSheetsId;
+  final String? barcode;
 
   Product({
     required this.id,
@@ -27,9 +30,10 @@ class Product {
     this.notes,
     this.source,
     required this.lastUpdated,
+    this.googleSheetsId,
+    this.barcode,
   });
 
-  // Get the Phe value to use (measured has priority)
   double get pheToUse => pheMeasuredPer100g ?? pheEstimatedPer100g;
 
   Map<String, dynamic> toFirestore() {
@@ -45,6 +49,8 @@ class Product {
       'notes': notes,
       'source': source,
       'lastUpdated': Timestamp.fromDate(lastUpdated),
+      'googleSheetsId': googleSheetsId,
+      'barcode': barcode,
     };
   }
 
@@ -63,13 +69,15 @@ class Product {
       notes: data['notes'],
       source: data['source'],
       lastUpdated: (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      googleSheetsId: data['googleSheetsId'],
+      barcode: data['barcode'],
     );
   }
 
-  factory Product.fromGoogleSheets(List<dynamic> row) {
-    // Assuming columns: name, category, protein, pheMeasured, pheEstimated, fat, carbs, calories, notes, source
+  factory Product.fromGoogleSheets(List<dynamic> row, int rowIndex) {
+    final googleSheetsId = 'row_$rowIndex';
     return Product(
-      id: '', // Will be set when saved to Firestore
+      id: '',
       name: row.length > 0 ? row[0].toString() : '',
       category: row.length > 1 ? row[1].toString() : 'other',
       proteinPer100g: row.length > 2 ? _parseDouble(row[2]) : 0.0,
@@ -81,11 +89,90 @@ class Product {
       notes: row.length > 8 ? row[8].toString() : null,
       source: row.length > 9 ? row[9].toString() : 'Google Sheets',
       lastUpdated: DateTime.now(),
+      googleSheetsId: googleSheetsId,
+      barcode: row.length > 10 ? row[10].toString() : null,
     );
+  }
+
+  factory Product.fromOpenFoodFacts(Map<String, dynamic> data, String barcode) {
+    final product = data['product'] as Map<String, dynamic>?;
+    if (product == null) {
+      throw Exception('Product data not found');
+    }
+
+    final nutriments = product['nutriments'] as Map<String, dynamic>? ?? {};
+    final proteinPer100g = (nutriments['proteins_100g'] ?? 0).toDouble();
+    
+    // Оценочный расчет Phe: примерно 50 мг на 1 г белка
+    final estimatedPhe = proteinPer100g * 50;
+
+    return Product(
+      id: '',
+      name: product['product_name'] ?? 'Неизвестный продукт',
+      category: _mapOpenFoodFactsCategory(product['categories'] ?? ''),
+      proteinPer100g: proteinPer100g,
+      pheMeasuredPer100g: null,
+      pheEstimatedPer100g: estimatedPhe,
+      fatPer100g: (nutriments['fat_100g'] ?? 0).toDouble(),
+      carbsPer100g: (nutriments['carbohydrates_100g'] ?? 0).toDouble(),
+      caloriesPer100g: (nutriments['energy-kcal_100g'] ?? 0).toDouble(),
+      notes: 'Данные из Open Food Facts',
+      source: 'Open Food Facts',
+      lastUpdated: DateTime.now(),
+      googleSheetsId: null,
+      barcode: barcode,
+    );
+  }
+
+  static String _mapOpenFoodFactsCategory(String categories) {
+    final lowerCategories = categories.toLowerCase();
+    if (lowerCategories.contains('fruit') || lowerCategories.contains('фрукт')) {
+      return 'fruits';
+    } else if (lowerCategories.contains('vegetable') || lowerCategories.contains('овощ')) {
+      return 'vegetables';
+    } else if (lowerCategories.contains('grain') || lowerCategories.contains('зерно') || 
+               lowerCategories.contains('хлеб') || lowerCategories.contains('bread')) {
+      return 'grains';
+    }
+    return 'other';
   }
 
   static double _parseDouble(dynamic value) {
     if (value == null || value.toString().isEmpty) return 0.0;
     return double.tryParse(value.toString()) ?? 0.0;
+  }
+
+  Product copyWith({
+    String? id,
+    String? name,
+    String? category,
+    double? proteinPer100g,
+    double? pheMeasuredPer100g,
+    double? pheEstimatedPer100g,
+    double? fatPer100g,
+    double? carbsPer100g,
+    double? caloriesPer100g,
+    String? notes,
+    String? source,
+    DateTime? lastUpdated,
+    String? googleSheetsId,
+    String? barcode,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      proteinPer100g: proteinPer100g ?? this.proteinPer100g,
+      pheMeasuredPer100g: pheMeasuredPer100g ?? this.pheMeasuredPer100g,
+      pheEstimatedPer100g: pheEstimatedPer100g ?? this.pheEstimatedPer100g,
+      fatPer100g: fatPer100g ?? this.fatPer100g,
+      carbsPer100g: carbsPer100g ?? this.carbsPer100g,
+      caloriesPer100g: caloriesPer100g ?? this.caloriesPer100g,
+      notes: notes ?? this.notes,
+      source: source ?? this.source,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      googleSheetsId: googleSheetsId ?? this.googleSheetsId,
+      barcode: barcode ?? this.barcode,
+    );
   }
 }

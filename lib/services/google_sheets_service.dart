@@ -1,16 +1,35 @@
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart';
+// lib/services/google_sheets_service.dart
 import 'dart:convert'; 
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
 class GoogleSheetsService {
+  static const String _spreadsheetId = '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
   static const String _apiKey = 'AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg';
   
-  Future<List<Product>> fetchProducts(String spreadsheetId) async {
+  Future<List<Product>> fetchProducts() async {
     try {
+      final metaUrl = Uri.parse(
+        'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId?key=$_apiKey',
+      );
+      
+      final metaResponse = await http.get(metaUrl);
+      
+      if (metaResponse.statusCode != 200) {
+        throw Exception('Failed to get spreadsheet metadata: ${metaResponse.statusCode}');
+      }
+      
+      final metaData = json.decode(metaResponse.body);
+      final sheets = metaData['sheets'] as List<dynamic>;
+      
+      final firstSheetTitle = sheets.isNotEmpty 
+          ? sheets[0]['properties']['title'] as String
+          : 'Sheet1';
+      
+      print('Using sheet: $firstSheetTitle');
+      
       final url = Uri.parse(
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/Sheet1!A2:J?key=$_apiKey',
+        'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId/values/${Uri.encodeComponent(firstSheetTitle)}!A2:J?key=$_apiKey',
       );
 
       print('Fetching from Google Sheets...');
@@ -29,7 +48,12 @@ class GoogleSheetsService {
         print('✅ Found ${values.length} products');
 
         return values
-            .map((row) => Product.fromGoogleSheets(row as List<dynamic>))
+            .asMap()
+            .entries
+            .map((entry) => Product.fromGoogleSheets(
+                  entry.value as List<dynamic>,
+                  entry.key,
+                ))
             .where((product) => product.name.isNotEmpty)
             .toList();
       } else {
@@ -41,10 +65,10 @@ class GoogleSheetsService {
     }
   }
 
-  Future<bool> testConnection(String spreadsheetId) async {
+  Future<bool> testConnection() async {
     try {
       final url = Uri.parse(
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId?key=$_apiKey',
+        'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId?key=$_apiKey',
       );
 
       final response = await http.get(url);

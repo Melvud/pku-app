@@ -1,10 +1,11 @@
+// lib/screens/products/product_selection_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/products_provider.dart';
-import '../../providers/diary_provider.dart';
 import '../../models/product.dart';
 import '../../models/diary_entry.dart';
+import 'edit_product_portion_screen.dart';
+import 'qr_scanner_screen.dart';
 
 class ProductSelectionScreen extends StatefulWidget {
   final MealType mealType;
@@ -28,9 +29,7 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
-      if (productsProvider.products.isEmpty) {
-        productsProvider.loadProducts();
-      }
+      productsProvider.loadProducts();
     });
   }
 
@@ -40,91 +39,30 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
     super.dispose();
   }
 
-  void _showAddPortionDialog(Product product) {
-    final TextEditingController portionController = TextEditingController(text: '100');
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(product.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Phe: ${product.pheToUse.toStringAsFixed(1)} мг / 100г',
-              style: const TextStyle(fontSize: 14),
-            ),
-            Text(
-              'Белок: ${product.proteinPer100g.toStringAsFixed(1)} г / 100г',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: portionController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Порция (грамм)',
-                suffixText: 'г',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 16),
-            _CalculatedNutrition(
-              product: product,
-              portionController: portionController,
-            ),
-          ],
+  void _navigateToQRScanner() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScannerScreen(mealType: widget.mealType),
+      ),
+    );
+
+    if (result != null && result is String) {
+      setState(() {
+        _searchController.text = result;
+        _searchQuery = result;
+      });
+    }
+  }
+
+  void _navigateToEditProduct(Product product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProductPortionScreen(
+          product: product,
+          mealType: widget.mealType,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final portion = double.tryParse(portionController.text);
-              if (portion == null || portion <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Введите корректную порцию')),
-                );
-                return;
-              }
-
-              try {
-                await Provider.of<DiaryProvider>(context, listen: false).addEntry(
-                  product: product,
-                  portionG: portion,
-                  mealType: widget.mealType,
-                );
-
-                if (mounted) {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Return to home screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${product.name} добавлен в ${widget.mealType.displayName}'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Ошибка: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Добавить'),
-          ),
-        ],
       ),
     );
   }
@@ -137,11 +75,52 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
       ),
       body: Consumer<ProductsProvider>(
         builder: (context, productsProvider, child) {
-          if (productsProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+          // Показываем прогресс синхронизации
+          if (productsProvider.isSyncing) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: productsProvider.syncProgress,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      productsProvider.syncStatus,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${(productsProvider.syncProgress * 100).toInt()}%',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
-          if (productsProvider.error != null) {
+          // Показываем загрузку для начальной загрузки
+          if (productsProvider.isLoading && productsProvider.products.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Загрузка продуктов...'),
+                ],
+              ),
+            );
+          }
+
+          if (productsProvider.error != null && productsProvider.products.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -154,7 +133,7 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => productsProvider.loadProducts(),
+                    onPressed: () => productsProvider.loadProducts(forceSync: true),
                     child: const Text('Повторить'),
                   ),
                 ],
@@ -164,12 +143,10 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
 
           List<Product> filteredProducts = productsProvider.products;
 
-          // Apply search filter
           if (_searchQuery.isNotEmpty) {
             filteredProducts = productsProvider.searchProducts(_searchQuery);
           }
 
-          // Apply category filter
           if (_selectedCategory != 'all') {
             filteredProducts = filteredProducts
                 .where((p) => p.category == _selectedCategory)
@@ -178,31 +155,41 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
 
           return Column(
             children: [
-              // Search Bar
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Поиск продуктов...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                  },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Поиск продуктов...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (value) {
+                          setState(() => _searchQuery = value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      onPressed: _navigateToQRScanner,
+                      tooltip: 'Сканировать QR',
+                    ),
+                  ],
                 ),
               ),
 
-              // Category Filter
               SizedBox(
                 height: 50,
                 child: ListView(
@@ -240,7 +227,30 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
 
               const Divider(height: 1),
 
-              // Products List
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Найдено: ${filteredProducts.length}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const Spacer(),
+                    if (productsProvider.lastSync != null)
+                      Text(
+                        'Обновлено: ${_formatDate(productsProvider.lastSync!)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: () => productsProvider.syncFromGoogleSheets(),
+                      tooltip: 'Синхронизировать',
+                    ),
+                  ],
+                ),
+              ),
+
               Expanded(
                 child: filteredProducts.isEmpty
                     ? Center(
@@ -279,9 +289,9 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                             trailing: IconButton(
                               icon: const Icon(Icons.add_circle),
                               color: Theme.of(context).colorScheme.primary,
-                              onPressed: () => _showAddPortionDialog(product),
+                              onPressed: () => _navigateToEditProduct(product),
                             ),
-                            onTap: () => _showAddPortionDialog(product),
+                            onTap: () => _navigateToEditProduct(product),
                           );
                         },
                       ),
@@ -292,9 +302,21 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
       ),
     );
   }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} мин назад';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours} ч назад';
+    } else {
+      return '${diff.inDays} дн назад';
+    }
+  }
 }
 
-// Category Chip Widget
 class _CategoryChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -314,102 +336,6 @@ class _CategoryChip extends StatelessWidget {
         label: Text(label),
         selected: isSelected,
         onSelected: (_) => onTap(),
-      ),
-    );
-  }
-}
-
-// Calculated Nutrition Widget
-class _CalculatedNutrition extends StatefulWidget {
-  final Product product;
-  final TextEditingController portionController;
-
-  const _CalculatedNutrition({
-    required this.product,
-    required this.portionController,
-  });
-
-  @override
-  State<_CalculatedNutrition> createState() => _CalculatedNutritionState();
-}
-
-class _CalculatedNutritionState extends State<_CalculatedNutrition> {
-  @override
-  void initState() {
-    super.initState();
-    widget.portionController.addListener(() {
-      setState(() {});
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final portion = double.tryParse(widget.portionController.text) ?? 0;
-    final multiplier = portion / 100.0;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'В вашей порции:',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          _NutrientRow(
-            label: 'Phe',
-            value: (widget.product.pheToUse * multiplier).toStringAsFixed(1),
-            unit: 'мг',
-          ),
-          _NutrientRow(
-            label: 'Белок',
-            value: (widget.product.proteinPer100g * multiplier).toStringAsFixed(1),
-            unit: 'г',
-          ),
-          if (widget.product.caloriesPer100g != null)
-            _NutrientRow(
-              label: 'Калории',
-              value: (widget.product.caloriesPer100g! * multiplier).toStringAsFixed(0),
-              unit: 'ккал',
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// Nutrient Row Widget
-class _NutrientRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-
-  const _NutrientRow({
-    required this.label,
-    required this.value,
-    required this.unit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 13)),
-          Text(
-            '$value $unit',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }

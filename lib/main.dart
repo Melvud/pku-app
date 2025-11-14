@@ -1,7 +1,9 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'providers/user_provider.dart';
 import 'providers/auth_provider.dart';
@@ -19,6 +21,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Включаем offline persistence для Firestore
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+  
   await initializeDateFormatting('ru', null);
   
   runApp(
@@ -102,11 +111,11 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 1; // Start with Home (diary) screen
+  int _currentIndex = 1;
 
   final List<Widget> _screens = const [
     ArticlesScreen(),
-    HomeScreen(), // This is now the diary + home combined
+    HomeScreen(),
     RecipesScreen(),
     SettingsScreen(),
   ];

@@ -1,3 +1,4 @@
+// lib/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import '../../models/diary_entry.dart';
 import '../../models/meal_session.dart';
 import '../products/product_selection_screen.dart';
 import '../products/add_custom_product_screen.dart';
+import '../products/qr_scanner_screen.dart';
 import '../statistics/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -144,6 +146,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) =>
                           ProductSelectionScreen(mealType: session.type),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.qr_code_scanner, color: Colors.purple),
+                ),
+                title: const Text('Сканировать QR-код'),
+                subtitle: const Text('Быстрое добавление'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          QRScannerScreen(mealType: session.type),
                     ),
                   );
                 },
@@ -357,7 +382,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: _loadData,
             child: CustomScrollView(
               slivers: [
-                // Modern AppBar
                 SliverAppBar(
                   expandedHeight: 140,
                   floating: false,
@@ -424,7 +448,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
 
-                // Date Selector
                 SliverToBoxAdapter(
                   child: Container(
                     margin: const EdgeInsets.all(16),
@@ -504,7 +527,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Nutrition Overview
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -519,7 +541,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Meals Section
                 SliverPadding(
                   padding: const EdgeInsets.all(16),
                   sliver: SliverList(
@@ -577,7 +598,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Add Meal Button
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -604,7 +624,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Nutrition Overview Card
 class _NutritionOverviewCard extends StatelessWidget {
   final double calories;
   final double protein;
@@ -681,7 +700,6 @@ class _NutritionOverviewCard extends StatelessWidget {
   }
 }
 
-// Main Phe Indicator
 class _MainPheIndicator extends StatelessWidget {
   final double current;
   final double limit;
@@ -779,7 +797,6 @@ class _MainPheIndicator extends StatelessWidget {
   }
 }
 
-// Nutrient Indicator
 class _NutrientIndicator extends StatelessWidget {
   final String label;
   final String value;
@@ -829,7 +846,6 @@ class _NutrientIndicator extends StatelessWidget {
   }
 }
 
-// Meal Card
 class _MealCard extends StatelessWidget {
   final MealSession session;
   final List<DiaryEntry> entries;
@@ -870,7 +886,6 @@ class _MealCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -880,7 +895,6 @@ class _MealCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Meal Number
                 Container(
                   width: 36,
                   height: 36,
@@ -900,7 +914,6 @@ class _MealCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Meal Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -956,7 +969,6 @@ class _MealCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Actions
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -977,7 +989,6 @@ class _MealCard extends StatelessWidget {
             ),
           ),
 
-          // Content
           if (entries.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
