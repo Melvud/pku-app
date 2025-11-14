@@ -1,0 +1,163 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+enum RecipeCategory {
+  breakfast('Завтраки'),
+  lunch('Обеды'),
+  dinner('Ужины'),
+  snack('Перекусы'),
+  dessert('Десерты'),
+  baking('Выпечка'),
+  salad('Салаты'),
+  soup('Супы');
+
+  final String displayName;
+  const RecipeCategory(this.displayName);
+}
+
+enum RecipeStatus {
+  approved('Одобрен'),
+  pending('На проверке'),
+  rejected('Отклонен');
+
+  final String displayName;
+  const RecipeStatus(this.displayName);
+}
+
+class Recipe {
+  final String id;
+  final String name;
+  final String description;
+  final RecipeCategory category;
+  final List<RecipeIngredient> ingredients;
+  final List<String> instructions;
+  final int servings;
+  final int cookingTimeMinutes;
+  final double phePer100g;
+  final double proteinPer100g;
+  final double? fatPer100g;
+  final double? carbsPer100g;
+  final double? caloriesPer100g;
+  final String? imageUrl;
+  final String authorId;
+  final String authorName;
+  final RecipeStatus status;
+  final DateTime createdAt;
+  final DateTime? approvedAt;
+  final String? rejectionReason;
+  final bool isOfficial; // Официальный рецепт от команды приложения
+
+  Recipe({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.ingredients,
+    required this.instructions,
+    required this.servings,
+    required this.cookingTimeMinutes,
+    required this.phePer100g,
+    required this.proteinPer100g,
+    this.fatPer100g,
+    this.carbsPer100g,
+    this.caloriesPer100g,
+    this.imageUrl,
+    required this.authorId,
+    required this.authorName,
+    required this.status,
+    required this.createdAt,
+    this.approvedAt,
+    this.rejectionReason,
+    this.isOfficial = false,
+  });
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'description': description,
+      'category': category.name,
+      'ingredients': ingredients.map((i) => i.toMap()).toList(),
+      'instructions': instructions,
+      'servings': servings,
+      'cookingTimeMinutes': cookingTimeMinutes,
+      'phePer100g': phePer100g,
+      'proteinPer100g': proteinPer100g,
+      'fatPer100g': fatPer100g,
+      'carbsPer100g': carbsPer100g,
+      'caloriesPer100g': caloriesPer100g,
+      'imageUrl': imageUrl,
+      'authorId': authorId,
+      'authorName': authorName,
+      'status': status.name,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
+      'rejectionReason': rejectionReason,
+      'isOfficial': isOfficial,
+    };
+  }
+
+  factory Recipe.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Recipe(
+      id: doc.id,
+      name: data['name'] ?? '',
+      description: data['description'] ?? '',
+      category: RecipeCategory.values.firstWhere(
+        (e) => e.name == data['category'],
+        orElse: () => RecipeCategory.snack,
+      ),
+      ingredients: (data['ingredients'] as List<dynamic>?)
+              ?.map((i) => RecipeIngredient.fromMap(i as Map<String, dynamic>))
+              .toList() ??
+          [],
+      instructions: (data['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+      servings: data['servings'] ?? 1,
+      cookingTimeMinutes: data['cookingTimeMinutes'] ?? 0,
+      phePer100g: (data['phePer100g'] ?? 0).toDouble(),
+      proteinPer100g: (data['proteinPer100g'] ?? 0).toDouble(),
+      fatPer100g: data['fatPer100g']?.toDouble(),
+      carbsPer100g: data['carbsPer100g']?.toDouble(),
+      caloriesPer100g: data['caloriesPer100g']?.toDouble(),
+      imageUrl: data['imageUrl'],
+      authorId: data['authorId'] ?? '',
+      authorName: data['authorName'] ?? 'Аноним',
+      status: RecipeStatus.values.firstWhere(
+        (e) => e.name == data['status'],
+        orElse: () => RecipeStatus.pending,
+      ),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
+      rejectionReason: data['rejectionReason'],
+      isOfficial: data['isOfficial'] ?? false,
+    );
+  }
+}
+
+class RecipeIngredient {
+  final String name;
+  final double amount;
+  final String unit; // г, мл, шт, ч.л., ст.л.
+
+  RecipeIngredient({
+    required this.name,
+    required this.amount,
+    required this.unit,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'amount': amount,
+      'unit': unit,
+    };
+  }
+
+  factory RecipeIngredient.fromMap(Map<String, dynamic> map) {
+    return RecipeIngredient(
+      name: map['name'] ?? '',
+      amount: (map['amount'] ?? 0).toDouble(),
+      unit: map['unit'] ?? 'г',
+    );
+  }
+
+  String get displayText => '$amount $unit $name';
+}
