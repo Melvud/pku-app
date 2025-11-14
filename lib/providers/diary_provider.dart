@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/diary_entry.dart';
 import '../models/product.dart';
+import '../models/meal_session.dart';
 
 class DiaryProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,13 +13,99 @@ class DiaryProvider with ChangeNotifier {
 
   DateTime _selectedDate = DateTime.now();
   List<DiaryEntry> _entries = [];
+  List<MealSession> _mealSessions = [];
   bool _isLoading = false;
   String? _error;
 
   DateTime get selectedDate => _selectedDate;
   List<DiaryEntry> get entries => _entries;
+  List<MealSession> get mealSessions => _mealSessions;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  DiaryProvider() {
+    _loadMealSessions();
+  }
+
+  // Load meal sessions from SharedPreferences
+  Future<void> _loadMealSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedSessions = prefs.getString('meal_sessions');
+      
+      if (savedSessions != null) {
+        final List<dynamic> decoded = json.decode(savedSessions);
+        _mealSessions = decoded.map((e) => MealSession.fromJson(e)).toList();
+      } else {
+        // Use default meals
+        _mealSessions = MealSession.defaultMeals;
+        await _saveMealSessions();
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading meal sessions: $e');
+      _mealSessions = MealSession.defaultMeals;
+    }
+  }
+
+  // Save meal sessions to SharedPreferences
+  Future<void> _saveMealSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = json.encode(_mealSessions.map((e) => e.toJson()).toList());
+      await prefs.setString('meal_sessions', encoded);
+    } catch (e) {
+      debugPrint('Error saving meal sessions: $e');
+    }
+  }
+
+  // Add new meal session
+  Future<void> addMealSession({
+    required MealType type,
+    String? customName,
+    DateTime? time,
+  }) async {
+    final newSession = MealSession(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: type,
+      customName: customName,
+      time: time,
+      order: _mealSessions.length,
+    );
+    
+    _mealSessions.add(newSession);
+    await _saveMealSessions();
+    notifyListeners();
+  }
+
+  // Remove meal session
+  Future<void> removeMealSession(String sessionId) async {
+    _mealSessions.removeWhere((s) => s.id == sessionId);
+    // Reorder
+    for (int i = 0; i < _mealSessions.length; i++) {
+      _mealSessions[i] = _mealSessions[i].copyWith(order: i);
+    }
+    await _saveMealSessions();
+    notifyListeners();
+  }
+
+  // Update meal session time
+  Future<void> updateMealSessionTime(String sessionId, DateTime time) async {
+    final index = _mealSessions.indexWhere((s) => s.id == sessionId);
+    if (index != -1) {
+      _mealSessions[index] = _mealSessions[index].copyWith(time: time);
+      await _saveMealSessions();
+      notifyListeners();
+    }
+  }
+
+  // Get entries for specific meal session
+  List<DiaryEntry> getEntriesForMealSession(String sessionId) {
+    // For now, we'll match by meal type
+    // In future, we can add sessionId to DiaryEntry
+    final session = _mealSessions.firstWhere((s) => s.id == sessionId);
+    return _entries.where((entry) => entry.mealType == session.type).toList();
+  }
 
   // Get entries for specific meal type
   List<DiaryEntry> getEntriesForMeal(MealType mealType) {
@@ -73,7 +162,6 @@ class DiaryProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get start and end of the day
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
@@ -104,11 +192,12 @@ class DiaryProvider with ChangeNotifier {
     required Product product,
     required double portionG,
     required MealType mealType,
+    String? customMealName,
+    DateTime? mealTime,
   }) async {
     if (_auth.currentUser == null) return;
 
     try {
-      // Calculate nutritional values
       final multiplier = portionG / 100.0;
       final pheInPortion = product.pheToUse * multiplier;
       final proteinInPortion = product.proteinPer100g * multiplier;
@@ -116,9 +205,8 @@ class DiaryProvider with ChangeNotifier {
       final carbsInPortion = product.carbsPer100g != null ? product.carbsPer100g! * multiplier : null;
       final caloriesInPortion = product.caloriesPer100g != null ? product.caloriesPer100g! * multiplier : null;
 
-      // Create entry
       final entry = DiaryEntry(
-        id: '', // Will be set by Firestore
+        id: '',
         userId: _auth.currentUser!.uid,
         productId: product.id,
         productName: product.name,
@@ -131,13 +219,12 @@ class DiaryProvider with ChangeNotifier {
         caloriesInPortion: caloriesInPortion,
         isMedicalFormula: false,
         mealType: mealType,
+        customMealName: customMealName,
         timestamp: _selectedDate,
+        mealTime: mealTime,
       );
 
-      // Save to Firestore
       await _firestore.collection('diary_entries').add(entry.toFirestore());
-
-      // Reload entries
       await loadEntriesForDate(_selectedDate);
 
       debugPrint('✅ Added entry: ${product.name} (${portionG}g)');
@@ -148,13 +235,15 @@ class DiaryProvider with ChangeNotifier {
     }
   }
 
-  // Add custom entry (without product from database)
+  // Add custom entry
   Future<void> addCustomEntry({
     required String productName,
     required double portionG,
     required double pheUsedPer100g,
     required double proteinPer100g,
     required MealType mealType,
+    String? customMealName,
+    DateTime? mealTime,
     double? fatPer100g,
     double? carbsPer100g,
     double? caloriesPer100g,
@@ -162,7 +251,6 @@ class DiaryProvider with ChangeNotifier {
     if (_auth.currentUser == null) return;
 
     try {
-      // Calculate nutritional values
       final multiplier = portionG / 100.0;
       final pheInPortion = pheUsedPer100g * multiplier;
       final proteinInPortion = proteinPer100g * multiplier;
@@ -170,11 +258,10 @@ class DiaryProvider with ChangeNotifier {
       final carbsInPortion = carbsPer100g != null ? carbsPer100g * multiplier : null;
       final caloriesInPortion = caloriesPer100g != null ? caloriesPer100g * multiplier : null;
 
-      // Create entry
       final entry = DiaryEntry(
-        id: '', // Will be set by Firestore
+        id: '',
         userId: _auth.currentUser!.uid,
-        productId: null, // No product ID for custom entries
+        productId: null,
         productName: productName,
         portionG: portionG,
         pheUsedPer100g: pheUsedPer100g,
@@ -185,13 +272,12 @@ class DiaryProvider with ChangeNotifier {
         caloriesInPortion: caloriesInPortion,
         isMedicalFormula: false,
         mealType: mealType,
+        customMealName: customMealName,
         timestamp: _selectedDate,
+        mealTime: mealTime,
       );
 
-      // Save to Firestore
       await _firestore.collection('diary_entries').add(entry.toFirestore());
-
-      // Reload entries
       await loadEntriesForDate(_selectedDate);
 
       debugPrint('✅ Added custom entry: $productName (${portionG}g)');
@@ -216,7 +302,7 @@ class DiaryProvider with ChangeNotifier {
   }
 
   // Get monthly statistics
-  Future<Map<String, double>> getMonthlyStats(int year, int month) async {
+  Future<Map<String, dynamic>> getMonthlyStats(int year, int month) async {
     if (_auth.currentUser == null) return {};
 
     try {
@@ -234,18 +320,51 @@ class DiaryProvider with ChangeNotifier {
           .map((doc) => DiaryEntry.fromFirestore(doc))
           .toList();
 
+      // Group by day
+      final Map<int, List<DiaryEntry>> dailyEntries = {};
+      for (var entry in entries) {
+        final day = entry.timestamp.day;
+        dailyEntries.putIfAbsent(day, () => []);
+        dailyEntries[day]!.add(entry);
+      }
+
+      // Calculate daily stats
+      final List<Map<String, dynamic>> dailyStats = [];
+      for (int day = 1; day <= endOfMonth.day; day++) {
+        final dayEntries = dailyEntries[day] ?? [];
+        dailyStats.add({
+          'day': day,
+          'phe': dayEntries.fold(0.0, (sum, e) => sum + e.pheInPortion),
+          'protein': dayEntries.fold(0.0, (sum, e) => sum + e.proteinInPortion),
+          'fat': dayEntries.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
+          'carbs': dayEntries.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
+          'calories': dayEntries.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
+          'entriesCount': dayEntries.length,
+        });
+      }
+
       final totalPhe = entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
       final totalProtein = entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
+      final totalFat = entries.fold(0.0, (sum, entry) => sum + (entry.fatInPortion ?? 0));
+      final totalCarbs = entries.fold(0.0, (sum, entry) => sum + (entry.carbsInPortion ?? 0));
       final totalCalories = entries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0));
       final daysCount = endOfMonth.day;
+      final activeDays = dailyEntries.length;
 
       return {
         'totalPhe': totalPhe,
         'totalProtein': totalProtein,
+        'totalFat': totalFat,
+        'totalCarbs': totalCarbs,
         'totalCalories': totalCalories,
         'avgPhePerDay': totalPhe / daysCount,
         'avgProteinPerDay': totalProtein / daysCount,
+        'avgFatPerDay': totalFat / daysCount,
+        'avgCarbsPerDay': totalCarbs / daysCount,
         'avgCaloriesPerDay': totalCalories / daysCount,
+        'activeDays': activeDays,
+        'totalDays': daysCount,
+        'dailyStats': dailyStats,
       };
     } catch (e) {
       debugPrint('❌ Error getting monthly stats: $e');

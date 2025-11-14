@@ -4,7 +4,8 @@ enum MealType {
   breakfast('Завтрак'),
   lunch('Обед'),
   dinner('Ужин'),
-  snack('Перекус');
+  snack('Перекус'),
+  custom('Другое');
 
   final String displayName;
   const MealType(this.displayName);
@@ -24,7 +25,9 @@ class DiaryEntry {
   final double? caloriesInPortion;
   final bool isMedicalFormula;
   final MealType mealType;
+  final String? customMealName; // Для кастомных приемов пищи
   final DateTime timestamp;
+  final DateTime? mealTime; // Время приема пищи
 
   DiaryEntry({
     required this.id,
@@ -40,7 +43,9 @@ class DiaryEntry {
     this.caloriesInPortion,
     required this.isMedicalFormula,
     required this.mealType,
+    this.customMealName,
     required this.timestamp,
+    this.mealTime,
   });
 
   Map<String, dynamic> toFirestore() {
@@ -57,7 +62,9 @@ class DiaryEntry {
       'caloriesInPortion': caloriesInPortion,
       'isMedicalFormula': isMedicalFormula,
       'mealType': mealType.name,
+      'customMealName': customMealName,
       'timestamp': Timestamp.fromDate(timestamp),
+      'mealTime': mealTime != null ? Timestamp.fromDate(mealTime!) : null,
     };
   }
 
@@ -78,9 +85,13 @@ class DiaryEntry {
       isMedicalFormula: data['isMedicalFormula'] ?? false,
       mealType: MealType.values.firstWhere(
         (e) => e.name == data['mealType'],
-        orElse: () => MealType.breakfast,
+        orElse: () => MealType.custom,
       ),
+      customMealName: data['customMealName'],
       timestamp: (data['timestamp'] as Timestamp).toDate(),
+      mealTime: data['mealTime'] != null 
+          ? (data['mealTime'] as Timestamp).toDate() 
+          : null,
     );
   }
 }
