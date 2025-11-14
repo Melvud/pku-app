@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "662233109978",
+    "project_id": "pku-app-40fc5",
+    "storage_bucket": "pku-app-40fc5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:662233109978:android:5e760e8e85adaf148e9ce3",
+        "android_client_info": {
+          "package_name": "com.example.phe_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,91 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class Product {
+  final String id;
+  final String name;
+  final String category;
+  final double proteinPer100g;
+  final double? pheMeasuredPer100g;
+  final double pheEstimatedPer100g;
+  final double? fatPer100g;
+  final double? carbsPer100g;
+  final double? caloriesPer100g;
+  final String? notes;
+  final String? source;
+  final DateTime lastUpdated;
+
+  Product({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.proteinPer100g,
+    this.pheMeasuredPer100g,
+    required this.pheEstimatedPer100g,
+    this.fatPer100g,
+    this.carbsPer100g,
+    this.caloriesPer100g,
+    this.notes,
+    this.source,
+    required this.lastUpdated,
+  });
+
+  // Get the Phe value to use (measured has priority)
+  double get pheToUse => pheMeasuredPer100g ?? pheEstimatedPer100g;
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'category': category,
+      'proteinPer100g': proteinPer100g,
+      'pheMeasuredPer100g': pheMeasuredPer100g,
+      'pheEstimatedPer100g': pheEstimatedPer100g,
+      'fatPer100g': fatPer100g,
+      'carbsPer100g': carbsPer100g,
+      'caloriesPer100g': caloriesPer100g,
+      'notes': notes,
+      'source': source,
+      'lastUpdated': Timestamp.fromDate(lastUpdated),
+    };
+  }
+
+  factory Product.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Product(
+      id: doc.id,
+      name: data['name'] ?? '',
+      category: data['category'] ?? 'other',
+      proteinPer100g: (data['proteinPer100g'] ?? 0).toDouble(),
+      pheMeasuredPer100g: data['pheMeasuredPer100g']?.toDouble(),
+      pheEstimatedPer100g: (data['pheEstimatedPer100g'] ?? 0).toDouble(),
+      fatPer100g: data['fatPer100g']?.toDouble(),
+      carbsPer100g: data['carbsPer100g']?.toDouble(),
+      caloriesPer100g: data['caloriesPer100g']?.toDouble(),
+      notes: data['notes'],
+      source: data['source'],
+      lastUpdated: (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  factory Product.fromGoogleSheets(List<dynamic> row) {
+    // Assuming columns: name, category, protein, pheMeasured, pheEstimated, fat, carbs, calories, notes, source
+    return Product(
+      id: '', // Will be set when saved to Firestore
+      name: row.length > 0 ? row[0].toString() : '',
+      category: row.length > 1 ? row[1].toString() : 'other',
+      proteinPer100g: row.length > 2 ? _parseDouble(row[2]) : 0.0,
+      pheMeasuredPer100g: row.length > 3 ? _parseDouble(row[3]) : null,
+      pheEstimatedPer100g: row.length > 4 ? _parseDouble(row[4]) : 0.0,
+      fatPer100g: row.length > 5 ? _parseDouble(row[5]) : null,
+      carbsPer100g: row.length > 6 ? _parseDouble(row[6]) : null,
+      caloriesPer100g: row.length > 7 ? _parseDouble(row[7]) : null,
+      notes: row.length > 8 ? row[8].toString() : null,
+      source: row.length > 9 ? row[9].toString() : 'Google Sheets',
+      lastUpdated: DateTime.now(),
+    );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null || value.toString().isEmpty) return 0.0;
+    return double.tryParse(value.toString()) ?? 0.0;
+  }
+}
