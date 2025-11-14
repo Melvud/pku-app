@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/article.dart';
+import '../models/recipe_comment.dart';
 
 class AdminProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,6 +18,9 @@ class AdminProvider with ChangeNotifier {
   List<Article> _articles = [];
   List<Article> get articles => _articles;
 
+  List<RecipeComment> _pendingComments = [];
+  List<RecipeComment> get pendingComments => _pendingComments;
+
   Map<String, dynamic> _appStats = {};
   Map<String, dynamic> get appStats => _appStats;
 
@@ -28,6 +32,9 @@ class AdminProvider with ChangeNotifier {
 
   bool _isLoadingStats = false;
   bool get isLoadingStats => _isLoadingStats;
+
+  bool _isLoadingComments = false;
+  bool get isLoadingComments => _isLoadingComments;
 
   // Check if current user is admin
   Future<void> checkAdminStatus() async {
@@ -213,5 +220,72 @@ class AdminProvider with ChangeNotifier {
 
     _isLoadingStats = false;
     notifyListeners();
+  }
+
+  // Load pending comments for moderation
+  Future<void> loadPendingComments() async {
+    _isLoadingComments = true;
+    notifyListeners();
+
+    try {
+      final snapshot = await _firestore
+          .collection('recipe_comments')
+          .where('status', isEqualTo: CommentStatus.pending.name)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      _pendingComments = snapshot.docs
+          .map((doc) => RecipeComment.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error loading pending comments: $e');
+      _pendingComments = [];
+    }
+
+    _isLoadingComments = false;
+    notifyListeners();
+  }
+
+  // Approve a comment
+  Future<void> approveComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.approved.name,
+      });
+
+      _pendingComments.removeWhere((c) => c.id == commentId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error approving comment: $e');
+      rethrow;
+    }
+  }
+
+  // Reject a comment
+  Future<void> rejectComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.rejected.name,
+      });
+
+      _pendingComments.removeWhere((c) => c.id == commentId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error rejecting comment: $e');
+      rethrow;
+    }
+  }
+
+  // Delete a comment
+  Future<void> deleteComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).delete();
+
+      _pendingComments.removeWhere((c) => c.id == commentId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting comment: $e');
+      rethrow;
+    }
   }
 }

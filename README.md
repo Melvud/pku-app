@@ -29,7 +29,7 @@ Once this field is set to `true`, the user will see an additional "Админ" t
 
 ### Admin Features
 
-The admin panel provides three main sections:
+The admin panel provides four main sections:
 
 #### 1. Statistics Tab
 - Total users count
@@ -51,6 +51,13 @@ The admin panel provides three main sections:
 - Add article titles and descriptions
 - Delete existing articles
 - All uploaded articles appear in the Articles screen for all users
+
+#### 4. Comments Moderation Tab
+- Review user-submitted comments on recipes
+- View comment text, author, and associated recipe
+- Approve comments to make them visible on recipes
+- Reject or delete inappropriate comments
+- All comments require moderation before being published
 
 ## Getting Started
 
@@ -100,7 +107,12 @@ The admin panel provides three main sections:
    - `title`, `description`, `pdfUrl`
    - `createdBy`, `createdByName`, `createdAt`
 
-4. **diary**: Daily food entries
+4. **recipe_comments**: Comments on recipes with fields:
+   - `recipeId`, `authorId`, `authorName`
+   - `text`, `createdAt`
+   - `status` (pending, approved, rejected)
+
+5. **diary**: Daily food entries
 
 ### Storage Rules
 
@@ -141,6 +153,13 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && 
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    match /recipe_comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+                               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
     match /diary/{entryId} {
