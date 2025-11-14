@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'providers/user_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/products_provider.dart';
+import 'providers/diary_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/articles/articles_screen.dart';
-import 'screens/diary/diary_screen.dart';
 import 'screens/recipes/recipes_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +19,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await initializeDateFormatting('ru', null);
   
   runApp(
     MultiProvider(
@@ -25,6 +27,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserAuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
+        ChangeNotifierProvider(create: (_) => DiaryProvider()),
       ],
       child: const PheTrackerApp(),
     ),
@@ -45,7 +48,7 @@ class PheTrackerApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        cardTheme: CardThemeData(  // Изменено на CardThemeData!
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -99,12 +102,11 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 2;
+  int _currentIndex = 1; // Start with Home (diary) screen
 
   final List<Widget> _screens = const [
     ArticlesScreen(),
-    DiaryScreen(),
-    HomeScreen(),
+    HomeScreen(), // This is now the diary + home combined
     RecipesScreen(),
     SettingsScreen(),
   ];
@@ -130,11 +132,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.book_outlined),
             selectedIcon: Icon(Icons.book),
             label: 'Дневник',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Главная',
           ),
           NavigationDestination(
             icon: Icon(Icons.restaurant_menu_outlined),

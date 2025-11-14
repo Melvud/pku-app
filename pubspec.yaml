@@ -16,7 +16,7 @@ dependencies:
   # State Management
   provider: ^6.1.2
   
-  # Firebase - ОБНОВЛЕННЫЕ ВЕРСИИ
+  # Firebase
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
@@ -27,7 +27,7 @@ dependencies:
   # Date/Time
   intl: ^0.19.0
   
-  # Charts
+  # Charts (для будущих графиков)
   fl_chart: ^0.69.0
   
   # Google Sheets & HTTP
