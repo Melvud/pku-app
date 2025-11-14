@@ -45,6 +45,8 @@ class Recipe {
   final DateTime? approvedAt;
   final String? rejectionReason;
   final bool isOfficial; // Официальный рецепт от команды приложения
+  final int likesCount; // Number of likes
+  final List<String> likedBy; // User IDs who liked this recipe
 
   Recipe({
     required this.id,
@@ -68,6 +70,8 @@ class Recipe {
     this.approvedAt,
     this.rejectionReason,
     this.isOfficial = false,
+    this.likesCount = 0,
+    this.likedBy = const [],
   });
 
   Map<String, dynamic> toFirestore() {
@@ -92,6 +96,8 @@ class Recipe {
       'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
       'rejectionReason': rejectionReason,
       'isOfficial': isOfficial,
+      'likesCount': likesCount,
+      'likedBy': likedBy,
     };
   }
 
@@ -128,6 +134,8 @@ class Recipe {
       approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
       rejectionReason: data['rejectionReason'],
       isOfficial: data['isOfficial'] ?? false,
+      likesCount: data['likesCount'] ?? 0,
+      likedBy: (data['likedBy'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 }

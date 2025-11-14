@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
+import '../models/recipe_comment.dart';
 
 class RecipesProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -112,6 +113,137 @@ class RecipesProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error getting recipe: $e');
       return null;
+    }
+  }
+
+  // Toggle like on a recipe
+  Future<void> toggleLike(String recipeId) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      final userId = _auth.currentUser!.uid;
+      final recipeRef = _firestore.collection('recipes').doc(recipeId);
+      final doc = await recipeRef.get();
+      
+      if (!doc.exists) return;
+      
+      final recipe = Recipe.fromFirestore(doc);
+      final isLiked = recipe.likedBy.contains(userId);
+      
+      if (isLiked) {
+        // Unlike
+        await recipeRef.update({
+          'likesCount': FieldValue.increment(-1),
+          'likedBy': FieldValue.arrayRemove([userId]),
+        });
+      } else {
+        // Like
+        await recipeRef.update({
+          'likesCount': FieldValue.increment(1),
+          'likedBy': FieldValue.arrayUnion([userId]),
+        });
+      }
+      
+      // Refresh recipes lists
+      await loadApprovedRecipes();
+      await loadMyRecipes();
+      
+      debugPrint('✅ Toggled like on recipe $recipeId');
+    } catch (e) {
+      debugPrint('❌ Error toggling like: $e');
+      rethrow;
+    }
+  }
+
+  // Add comment to recipe
+  Future<void> addComment({
+    required String recipeId,
+    required String text,
+    required String authorName,
+  }) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      final comment = RecipeComment(
+        id: '',
+        recipeId: recipeId,
+        authorId: _auth.currentUser!.uid,
+        authorName: authorName,
+        text: text,
+        createdAt: DateTime.now(),
+        status: CommentStatus.pending, // Always start as pending
+      );
+      
+      await _firestore.collection('recipe_comments').add(comment.toFirestore());
+      
+      debugPrint('✅ Comment added to recipe $recipeId');
+    } catch (e) {
+      debugPrint('❌ Error adding comment: $e');
+      rethrow;
+    }
+  }
+
+  // Get comments for a recipe
+  Future<List<RecipeComment>> getCommentsForRecipe(String recipeId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('recipe_comments')
+          .where('recipeId', isEqualTo: recipeId)
+          .where('status', isEqualTo: CommentStatus.approved.name)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RecipeComment.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('❌ Error getting comments: $e');
+      return [];
+    }
+  }
+
+  // Get all comments (for admin)
+  Future<List<RecipeComment>> getAllComments() async {
+    try {
+      final snapshot = await _firestore
+          .collection('recipe_comments')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RecipeComment.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('❌ Error getting all comments: $e');
+      return [];
+    }
+  }
+
+  // Approve comment (admin only)
+  Future<void> approveComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.approved.name,
+      });
+      
+      debugPrint('✅ Comment approved: $commentId');
+    } catch (e) {
+      debugPrint('❌ Error approving comment: $e');
+      rethrow;
+    }
+  }
+
+  // Reject comment (admin only)
+  Future<void> rejectComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.rejected.name,
+      });
+      
+      debugPrint('✅ Comment rejected: $commentId');
+    } catch (e) {
+      debugPrint('❌ Error rejecting comment: $e');
+      rethrow;
     }
   }
 }
