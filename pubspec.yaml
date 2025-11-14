@@ -43,6 +43,9 @@ dependencies:
   # QR Scanner
   mobile_scanner: ^5.2.3
   permission_handler: ^11.3.1
+  
+  # URL Launcher
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

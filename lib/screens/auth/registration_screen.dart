@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../main.dart';
@@ -12,8 +13,8 @@ class RegistrationScreen extends StatefulWidget {
   State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
-  // Отдельные ключи для каждого шага
+class _RegistrationScreenState extends State<RegistrationScreen>
+    with SingleTickerProviderStateMixin {
   final _step1FormKey = GlobalKey<FormState>();
   final _step2FormKey = GlobalKey<FormState>();
   final _step3FormKey = GlobalKey<FormState>();
@@ -22,15 +23,28 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
   final _weightController = TextEditingController();
   final _pheToleranceController = TextEditingController();
-  final _medicalFormulaController = TextEditingController();
+  final _customFormulaController = TextEditingController();
   
+  DateTime? _selectedDateOfBirth;
+  String _selectedFormula = 'PKU Anamix';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   int _currentStep = 0;
+
+  // Список популярных лечебных смесей
+  final List<String> _formulas = [
+    'PKU Anamix',
+    'PKU Anamix Junior',
+    'Lophlex LQ',
+    'PKU Cooler',
+    'PKU Express',
+    'PKU Air',
+    'PKU Sphere',
+    'Другая',
+  ];
 
   @override
   void dispose() {
@@ -38,10 +52,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nameController.dispose();
-    _ageController.dispose();
     _weightController.dispose();
     _pheToleranceController.dispose();
-    _medicalFormulaController.dispose();
+    _customFormulaController.dispose();
     super.dispose();
   }
 
@@ -58,20 +71,59 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
+  Future<void> _selectDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('ru'),
+      helpText: 'Выберите дату рождения',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+    );
+    
+    if (picked != null) {
+      setState(() => _selectedDateOfBirth = picked);
+    }
+  }
+
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month || 
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
+
   Future<void> _handleRegistration() async {
     if (!_validateCurrentStep()) return;
 
+    if (_selectedDateOfBirth == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Укажите дату рождения'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     
+    final medicalFormula = _selectedFormula == 'Другая' 
+        ? _customFormulaController.text 
+        : _selectedFormula;
+
     final profile = UserProfile(
       name: _nameController.text,
-      age: int.parse(_ageController.text),
+      dateOfBirth: _selectedDateOfBirth!,
       weight: double.parse(_weightController.text),
       dailyTolerancePhe: double.parse(_pheToleranceController.text),
       email: _emailController.text,
-      medicalFormula: _medicalFormulaController.text.isEmpty 
-          ? null 
-          : _medicalFormulaController.text,
+      medicalFormula: medicalFormula.isEmpty ? null : medicalFormula,
     );
 
     final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
@@ -296,32 +348,59 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _ageController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Возраст',
-                        hintText: '25',
-                        prefixIcon: Icon(Icons.cake_outlined),
-                        suffixText: 'лет',
-                        helperText: 'Обязательное поле',
+                    
+                    // Дата рождения
+                    InkWell(
+                      onTap: _selectDateOfBirth,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Дата рождения *',
+                          prefixIcon: Icon(Icons.cake_outlined),
+                          helperText: 'Обязательное поле',
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _selectedDateOfBirth == null
+                                  ? 'Выберите дату'
+                                  : DateFormat('dd.MM.yyyy').format(_selectedDateOfBirth!),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: _selectedDateOfBirth == null
+                                    ? Colors.grey.shade600
+                                    : null,
+                              ),
+                            ),
+                            if (_selectedDateOfBirth != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${_calculateAge(_selectedDateOfBirth!)} лет',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Введите возраст';
-                        }
-                        final age = int.tryParse(value);
-                        if (age == null || age < 1 || age > 120) {
-                          return 'Введите корректный возраст';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
+                    
                     TextFormField(
                       controller: _weightController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                       ],
@@ -413,17 +492,39 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _medicalFormulaController,
-                      textCapitalization: TextCapitalization.sentences,
+                    
+                    // Выбор лечебной смеси
+                    DropdownButtonFormField<String>(
+                      value: _selectedFormula,
                       decoration: const InputDecoration(
                         labelText: 'Какую смесь пьете?',
-                        hintText: 'Например: Anamix Junior',
                         prefixIcon: Icon(Icons.local_drink_outlined),
                         helperText: 'Необязательное поле',
                       ),
-                      maxLines: 2,
+                      items: _formulas.map((formula) {
+                        return DropdownMenuItem(
+                          value: formula,
+                          child: Text(formula),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedFormula = value!);
+                      },
                     ),
+                    
+                    // Поле для своей смеси если выбрано "Другая"
+                    if (_selectedFormula == 'Другая') ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _customFormulaController,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Название смеси',
+                          hintText: 'Введите название',
+                          prefixIcon: Icon(Icons.edit_outlined),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                   ],
                 ),

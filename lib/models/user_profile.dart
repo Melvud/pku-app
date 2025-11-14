@@ -1,24 +1,35 @@
 class UserProfile {
-  final String name;  // Теперь обязательное
-  final int age;      // Теперь обязательное
-  final double weight; // Теперь обязательное
+  final String name;
+  final DateTime dateOfBirth;
+  final double weight;
   final double dailyTolerancePhe;
   final String email;
-  final String? medicalFormula; // Новое поле - какую смесь пьете
+  final String? medicalFormula;
 
   UserProfile({
     required this.name,
-    required this.age,
+    required this.dateOfBirth,
     required this.weight,
     required this.dailyTolerancePhe,
     required this.email,
     this.medicalFormula,
   });
 
+  // Вычисляем возраст
+  int get age {
+    final now = DateTime.now();
+    int age = now.year - dateOfBirth.year;
+    if (now.month < dateOfBirth.month || 
+        (now.month == dateOfBirth.month && now.day < dateOfBirth.day)) {
+      age--;
+    }
+    return age;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'age': age,
+      'dateOfBirth': dateOfBirth.toIso8601String(),
       'weight': weight,
       'dailyTolerancePhe': dailyTolerancePhe,
       'email': email,
@@ -29,7 +40,9 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       name: json['name'] ?? '',
-      age: json['age'] ?? 0,
+      dateOfBirth: json['dateOfBirth'] != null 
+          ? DateTime.parse(json['dateOfBirth'])
+          : DateTime.now().subtract(const Duration(days: 365 * 25)),
       weight: (json['weight'] ?? 0).toDouble(),
       dailyTolerancePhe: (json['dailyTolerancePhe'] ?? 0).toDouble(),
       email: json['email'] ?? '',
@@ -39,7 +52,7 @@ class UserProfile {
 
   UserProfile copyWith({
     String? name,
-    int? age,
+    DateTime? dateOfBirth,
     double? weight,
     double? dailyTolerancePhe,
     String? email,
@@ -47,7 +60,7 @@ class UserProfile {
   }) {
     return UserProfile(
       name: name ?? this.name,
-      age: age ?? this.age,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       weight: weight ?? this.weight,
       dailyTolerancePhe: dailyTolerancePhe ?? this.dailyTolerancePhe,
       email: email ?? this.email,
