@@ -44,6 +44,13 @@ class _RecipesScreenState extends State<RecipesScreen> {
             pinned: true,
             elevation: 0,
             backgroundColor: Theme.of(context).colorScheme.primary,
+            title: Text(
+              'Рецепты',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(

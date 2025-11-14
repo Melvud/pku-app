@@ -203,6 +203,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             pinned: true,
             elevation: 0,
             backgroundColor: Theme.of(context).colorScheme.primary,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              'Статистика',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(

@@ -47,6 +47,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             pinned: true,
             elevation: 0,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            title: Text(
+              'Панель',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(

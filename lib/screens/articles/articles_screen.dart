@@ -38,6 +38,13 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                 pinned: true,
                 elevation: 0,
                 backgroundColor: Theme.of(context).colorScheme.primary,
+                title: Text(
+                  'Статьи',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: BoxDecoration(
