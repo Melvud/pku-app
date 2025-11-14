@@ -7,6 +7,8 @@ class MealSession {
   final String? customName;
   final DateTime? time;
   final int order;
+  final DateTime date; // Date this session belongs to
+  final bool drankFormula; // Whether medical formula was consumed
 
   MealSession({
     required this.id,
@@ -14,6 +16,8 @@ class MealSession {
     this.customName,
     this.time,
     required this.order,
+    required this.date,
+    this.drankFormula = false,
   });
 
   String get displayName {
@@ -59,6 +63,8 @@ class MealSession {
     String? customName,
     DateTime? time,
     int? order,
+    DateTime? date,
+    bool? drankFormula,
   }) {
     return MealSession(
       id: id ?? this.id,
@@ -66,6 +72,8 @@ class MealSession {
       customName: customName ?? this.customName,
       time: time ?? this.time,
       order: order ?? this.order,
+      date: date ?? this.date,
+      drankFormula: drankFormula ?? this.drankFormula,
     );
   }
 
@@ -76,6 +84,8 @@ class MealSession {
       'customName': customName,
       'time': time?.toIso8601String(),
       'order': order,
+      'date': date.toIso8601String(),
+      'drankFormula': drankFormula,
     };
   }
 
@@ -89,28 +99,38 @@ class MealSession {
       customName: json['customName'] as String?,
       time: json['time'] != null ? DateTime.parse(json['time'] as String) : null,
       order: json['order'] as int,
+      date: json['date'] != null 
+          ? DateTime.parse(json['date'] as String)
+          : DateTime.now(), // Fallback for backward compatibility
+      drankFormula: json['drankFormula'] as bool? ?? false,
     );
   }
 
-  // Дефолтные приемы пищи
-  static List<MealSession> get defaultMeals => [
+  // Дефолтные приемы пищи для конкретной даты
+  static List<MealSession> defaultMealsForDate(DateTime date) => [
         MealSession(
-          id: 'breakfast',
+          id: 'breakfast_${date.toIso8601String()}',
           type: MealType.breakfast,
           order: 0,
-          time: DateTime(2000, 1, 1, 8, 0), // 08:00
+          time: DateTime(date.year, date.month, date.day, 8, 0), // 08:00
+          date: date,
         ),
         MealSession(
-          id: 'lunch',
+          id: 'lunch_${date.toIso8601String()}',
           type: MealType.lunch,
           order: 1,
-          time: DateTime(2000, 1, 1, 13, 0), // 13:00
+          time: DateTime(date.year, date.month, date.day, 13, 0), // 13:00
+          date: date,
         ),
         MealSession(
-          id: 'dinner',
+          id: 'dinner_${date.toIso8601String()}',
           type: MealType.dinner,
           order: 2,
-          time: DateTime(2000, 1, 1, 18, 0), // 18:00
+          time: DateTime(date.year, date.month, date.day, 18, 0), // 18:00
+          date: date,
         ),
       ];
+  
+  // Старый метод для совместимости
+  static List<MealSession> get defaultMeals => defaultMealsForDate(DateTime.now());
 }

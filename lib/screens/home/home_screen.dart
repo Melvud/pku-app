@@ -590,6 +590,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                             },
                             onEditTime: () => _editMealTime(session),
+                            onToggleFormula: () => diaryProvider.toggleMealSessionFormula(session.id),
                           ),
                         );
                       },
@@ -854,6 +855,7 @@ class _MealCard extends StatelessWidget {
   final Function(String) onDeleteEntry;
   final VoidCallback onDeleteMeal;
   final VoidCallback onEditTime;
+  final VoidCallback onToggleFormula;
 
   const _MealCard({
     required this.session,
@@ -863,6 +865,7 @@ class _MealCard extends StatelessWidget {
     required this.onDeleteEntry,
     required this.onDeleteMeal,
     required this.onEditTime,
+    required this.onToggleFormula,
   });
 
   @override
@@ -986,6 +989,58 @@ class _MealCard extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+
+          // Formula checkbox
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: InkWell(
+              onTap: onToggleFormula,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: session.drankFormula 
+                      ? color.withOpacity(0.1)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: session.drankFormula 
+                        ? color
+                        : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      session.drankFormula 
+                          ? Icons.check_box 
+                          : Icons.check_box_outline_blank,
+                      color: session.drankFormula 
+                          ? color 
+                          : Colors.grey.shade600,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Выпил смесь',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: session.drankFormula 
+                              ? FontWeight.w600 
+                              : FontWeight.normal,
+                          color: session.drankFormula 
+                              ? color 
+                              : Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
 
