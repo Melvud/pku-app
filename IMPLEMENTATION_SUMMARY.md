@@ -16,6 +16,7 @@ This document summarizes the admin panel feature implementation for the PKU Diet
 - `lib/screens/admin/statistics_tab.dart` - App usage statistics dashboard
 - `lib/screens/admin/recipes_approval_tab.dart` - Recipe moderation interface
 - `lib/screens/admin/articles_management_tab.dart` - Article upload and management
+- `lib/screens/admin/comments_moderation_tab.dart` - Comment moderation interface
 
 ### Article Screens
 - `lib/screens/articles/pdf_viewer_screen.dart` - PDF viewer for articles
@@ -72,11 +73,21 @@ Capabilities:
 - Delete articles
 - Built-in PDF viewer for reading
 
-### 5. User-Facing Integration
+### 5. Comment Moderation
+Features:
+- View all pending comments on recipes
+- See comment text, author, and associated recipe
+- Approve comments (makes them visible)
+- Reject comments (hides but preserves)
+- Delete comments permanently
+- Modern card-based UI with actions
+
+### 6. User-Facing Integration
 - Articles screen shows uploaded PDFs
 - Click article to open in PDF viewer
 - Only approved recipes visible to users
 - Submitted recipes go to pending status
+- Comments require admin approval before being published
 
 ## UI/UX Highlights
 
@@ -115,6 +126,13 @@ match /recipes/{recipeId} {
 match /articles/{articleId} {
   allow read: if request.auth != null;
   allow write: if request.auth != null && isAdmin();
+}
+
+// Comments - users can create, only admins can update/delete
+match /recipe_comments/{commentId} {
+  allow read: if request.auth != null;
+  allow create: if request.auth != null;
+  allow update, delete: if request.auth != null && isAdmin();
 }
 ```
 
@@ -158,6 +176,21 @@ Create Firestore record
 Article appears in Articles screen for all users
 ```
 
+### Comment Moderation Workflow
+```
+User writes comment on recipe
+    ↓
+Status: pending
+    ↓
+Comment NOT visible to other users
+    ↓
+Admin reviews in comments moderation tab
+    ↓
+    ├── Approve → Status: approved → Visible on recipe
+    ├── Reject → Status: rejected → Hidden but preserved
+    └── Delete → Comment removed permanently
+```
+
 ### Admin Access Workflow
 ```
 User logs in
@@ -181,6 +214,12 @@ App checks isAdmin field in Firestore
 - [ ] View article in Articles screen
 - [ ] Open PDF in viewer
 - [ ] Delete article as admin
+- [ ] Post comment on recipe as regular user
+- [ ] Verify comment is pending and not visible
+- [ ] Approve comment as admin
+- [ ] Verify comment appears on recipe
+- [ ] Reject comment as admin
+- [ ] Delete comment as admin
 - [ ] Test error handling (no internet, etc.)
 
 ## Future Enhancements
@@ -194,8 +233,8 @@ Potential improvements:
 6. Article categories and tags
 7. Rich text editor for article descriptions
 8. Image upload for recipes and articles
-9. Comment system for articles
-10. Admin activity logs
+9. Admin activity logs
+10. Moderation dashboard with all pending items
 
 ## Support
 
