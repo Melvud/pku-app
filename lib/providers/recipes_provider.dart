@@ -65,9 +65,17 @@ class RecipesProvider with ChangeNotifier {
     if (_auth.currentUser == null) return;
 
     try {
-      await _firestore.collection('recipes').add(recipe.toFirestore());
-      await loadMyRecipes();
-      debugPrint('✅ Recipe submitted for approval');
+      final docRef = await _firestore.collection('recipes').add(recipe.toFirestore());
+      
+      // Get the created recipe with the ID
+      final doc = await docRef.get();
+      final createdRecipe = Recipe.fromFirestore(doc);
+      
+      // Add to my recipes immediately
+      _myRecipes.insert(0, createdRecipe);
+      notifyListeners();
+      
+      debugPrint('✅ Recipe submitted for approval and added to my recipes');
     } catch (e) {
       _error = 'Ошибка добавления рецепта: $e';
       debugPrint('❌ Error adding recipe: $e');

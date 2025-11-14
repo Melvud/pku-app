@@ -16,13 +16,16 @@ class RecipesScreen extends StatefulWidget {
 class _RecipesScreenState extends State<RecipesScreen> {
   RecipeCategory? _selectedCategory;
   String _searchQuery = '';
+  bool _showMyRecipes = false; // Track if showing my recipes
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<RecipesProvider>(context, listen: false).loadApprovedRecipes();
+      final provider = Provider.of<RecipesProvider>(context, listen: false);
+      provider.loadApprovedRecipes();
+      provider.loadMyRecipes(); // Also load my recipes
     });
   }
 
@@ -93,20 +96,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 ),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.book, color: Colors.white),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyRecipesScreen(),
-                    ),
-                  );
-                },
-                tooltip: 'Мои рецепты',
-              ),
-            ],
           ),
 
           // Search Bar
@@ -148,14 +137,28 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _CategoryChip(
+                    label: 'Мои рецепты',
+                    isSelected: _showMyRecipes,
+                    onTap: () => setState(() {
+                      _showMyRecipes = true;
+                      _selectedCategory = null;
+                    }),
+                  ),
+                  _CategoryChip(
                     label: 'Все',
-                    isSelected: _selectedCategory == null,
-                    onTap: () => setState(() => _selectedCategory = null),
+                    isSelected: !_showMyRecipes && _selectedCategory == null,
+                    onTap: () => setState(() {
+                      _showMyRecipes = false;
+                      _selectedCategory = null;
+                    }),
                   ),
                   ...RecipeCategory.values.map((category) => _CategoryChip(
                         label: category.displayName,
-                        isSelected: _selectedCategory == category,
-                        onTap: () => setState(() => _selectedCategory = category),
+                        isSelected: !_showMyRecipes && _selectedCategory == category,
+                        onTap: () => setState(() {
+                          _showMyRecipes = false;
+                          _selectedCategory = category;
+                        }),
                       )),
                 ],
               ),
@@ -194,9 +197,23 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 );
               }
 
-              List<Recipe> filteredRecipes = _searchQuery.isNotEmpty
-                  ? provider.searchRecipes(_searchQuery)
-                  : provider.filterByCategory(_selectedCategory);
+              List<Recipe> filteredRecipes;
+              
+              if (_showMyRecipes) {
+                // Show my recipes (all statuses)
+                filteredRecipes = _searchQuery.isNotEmpty
+                    ? provider.myRecipes.where((r) {
+                        final lowerQuery = _searchQuery.toLowerCase();
+                        return r.name.toLowerCase().contains(lowerQuery) ||
+                               r.description.toLowerCase().contains(lowerQuery);
+                      }).toList()
+                    : provider.myRecipes;
+              } else {
+                // Show approved recipes with filters
+                filteredRecipes = _searchQuery.isNotEmpty
+                    ? provider.searchRecipes(_searchQuery)
+                    : provider.filterByCategory(_selectedCategory);
+              }
 
               if (filteredRecipes.isEmpty) {
                 return SliverFillRemaining(
@@ -411,6 +428,109 @@ class _RecipeCard extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Status badge
+                  if (recipe.status == RecipeStatus.pending)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.hourglass_empty,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'На проверке',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (recipe.status == RecipeStatus.rejected)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.close,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Отклонено',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (recipe.status == RecipeStatus.approved && !recipe.isOfficial)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.check_circle,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Опубликовано',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                           ],
