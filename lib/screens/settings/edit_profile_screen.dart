@@ -64,6 +64,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     super.dispose();
   }
 
+  // Helper method to calculate date of birth from age
+  DateTime _calculateDateOfBirth(int age) {
+    final now = DateTime.now();
+    return DateTime(now.year - age, now.month, now.day);
+  }
+
   Future<void> _saveChanges() async {
     bool isValid = false;
 
@@ -86,9 +92,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         throw Exception('Профиль не найден');
       }
 
+      // Convert age to dateOfBirth
+      final age = int.parse(_ageController.text);
+      final dateOfBirth = _calculateDateOfBirth(age);
+
       final updatedProfile = UserProfile(
         name: _nameController.text,
-        age: int.parse(_ageController.text),
+        dateOfBirth: dateOfBirth,  // ✅ Use dateOfBirth instead of age
         weight: double.parse(_weightController.text),
         dailyTolerancePhe: double.parse(_pheToleranceController.text),
         email: _emailController.text,

@@ -9,6 +9,7 @@ import 'providers/user_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/products_provider.dart';
 import 'providers/diary_provider.dart';
+import 'providers/recipes_provider.dart';  // ✅ Добавить импорт
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/articles/articles_screen.dart';
@@ -37,6 +38,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => DiaryProvider()),
+        ChangeNotifierProvider(create: (_) => RecipesProvider()),  // ✅ Добавить провайдер
       ],
       child: const PheTrackerApp(),
     ),
