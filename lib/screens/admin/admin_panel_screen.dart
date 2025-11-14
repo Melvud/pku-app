@@ -4,6 +4,7 @@ import '../../providers/admin_provider.dart';
 import 'statistics_tab.dart';
 import 'recipes_approval_tab.dart';
 import 'articles_management_tab.dart';
+import 'comments_moderation_tab.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -19,7 +20,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     
     // Load initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -27,6 +28,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       adminProvider.loadAppStats();
       adminProvider.loadPendingRecipes();
       adminProvider.loadArticles();
+      adminProvider.loadPendingComments();
     });
   }
 
@@ -132,6 +134,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                       icon: Icon(Icons.article, size: 20),
                       text: 'Статьи',
                     ),
+                    Tab(
+                      icon: Icon(Icons.comment, size: 20),
+                      text: 'Комментарии',
+                    ),
                   ],
                 ),
               ),
@@ -144,6 +150,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 StatisticsTab(),
                 RecipesApprovalTab(),
                 ArticlesManagementTab(),
+                CommentsModerationTab(),
               ],
             ),
           ),
