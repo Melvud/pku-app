@@ -27,33 +27,35 @@ class DiaryProvider with ChangeNotifier {
     _loadMealSessions();
   }
 
-  // Load meal sessions from SharedPreferences
+  // Load meal sessions from SharedPreferences for specific date
   Future<void> _loadMealSessions() async {
     try {
+      final dateKey = _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
       final prefs = await SharedPreferences.getInstance();
-      final savedSessions = prefs.getString('meal_sessions');
+      final savedSessions = prefs.getString('meal_sessions_$dateKey');
       
       if (savedSessions != null) {
         final List<dynamic> decoded = json.decode(savedSessions);
         _mealSessions = decoded.map((e) => MealSession.fromJson(e)).toList();
       } else {
-        // Use default meals
-        _mealSessions = MealSession.defaultMeals;
+        // Use default meals for this date
+        _mealSessions = MealSession.defaultMealsForDate(_selectedDate);
         await _saveMealSessions();
       }
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading meal sessions: $e');
-      _mealSessions = MealSession.defaultMeals;
+      _mealSessions = MealSession.defaultMealsForDate(_selectedDate);
     }
   }
 
-  // Save meal sessions to SharedPreferences
+  // Save meal sessions to SharedPreferences for specific date
   Future<void> _saveMealSessions() async {
     try {
+      final dateKey = _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
       final prefs = await SharedPreferences.getInstance();
       final encoded = json.encode(_mealSessions.map((e) => e.toJson()).toList());
-      await prefs.setString('meal_sessions', encoded);
+      await prefs.setString('meal_sessions_$dateKey', encoded);
     } catch (e) {
       debugPrint('Error saving meal sessions: $e');
     }
@@ -71,6 +73,7 @@ class DiaryProvider with ChangeNotifier {
       customName: customName,
       time: time,
       order: _mealSessions.length,
+      date: _selectedDate,
     );
     
     _mealSessions.add(newSession);
@@ -94,6 +97,18 @@ class DiaryProvider with ChangeNotifier {
     final index = _mealSessions.indexWhere((s) => s.id == sessionId);
     if (index != -1) {
       _mealSessions[index] = _mealSessions[index].copyWith(time: time);
+      await _saveMealSessions();
+      notifyListeners();
+    }
+  }
+
+  // Toggle formula checkbox for meal session
+  Future<void> toggleMealSessionFormula(String sessionId) async {
+    final index = _mealSessions.indexWhere((s) => s.id == sessionId);
+    if (index != -1) {
+      _mealSessions[index] = _mealSessions[index].copyWith(
+        drankFormula: !_mealSessions[index].drankFormula,
+      );
       await _saveMealSessions();
       notifyListeners();
     }
@@ -150,6 +165,7 @@ class DiaryProvider with ChangeNotifier {
   // Set selected date
   void setSelectedDate(DateTime date) {
     _selectedDate = DateTime(date.year, date.month, date.day);
+    _loadMealSessions(); // Load meal sessions for the new date
     loadEntriesForDate(_selectedDate);
   }
 
