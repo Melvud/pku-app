@@ -5,6 +5,7 @@ class UserProfile {
   final double dailyTolerancePhe;
   final String email;
   final String? medicalFormula;
+  final bool isAdmin;
 
   UserProfile({
     required this.name,
@@ -13,6 +14,7 @@ class UserProfile {
     required this.dailyTolerancePhe,
     required this.email,
     this.medicalFormula,
+    this.isAdmin = false,
   });
 
   // Вычисляем возраст
@@ -34,6 +36,7 @@ class UserProfile {
       'dailyTolerancePhe': dailyTolerancePhe,
       'email': email,
       'medicalFormula': medicalFormula,
+      'isAdmin': isAdmin,
     };
   }
 
@@ -47,6 +50,7 @@ class UserProfile {
       dailyTolerancePhe: (json['dailyTolerancePhe'] ?? 0).toDouble(),
       email: json['email'] ?? '',
       medicalFormula: json['medicalFormula'],
+      isAdmin: json['isAdmin'] ?? false,
     );
   }
 
@@ -57,6 +61,7 @@ class UserProfile {
     double? dailyTolerancePhe,
     String? email,
     String? medicalFormula,
+    bool? isAdmin,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -65,6 +70,7 @@ class UserProfile {
       dailyTolerancePhe: dailyTolerancePhe ?? this.dailyTolerancePhe,
       email: email ?? this.email,
       medicalFormula: medicalFormula ?? this.medicalFormula,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 }

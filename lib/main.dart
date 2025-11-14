@@ -10,11 +10,13 @@ import 'providers/auth_provider.dart';
 import 'providers/products_provider.dart';
 import 'providers/diary_provider.dart';
 import 'providers/recipes_provider.dart';  // ✅ Добавить импорт
+import 'providers/admin_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/articles/articles_screen.dart';
 import 'screens/recipes/recipes_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/admin/admin_panel_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
@@ -39,6 +41,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => DiaryProvider()),
         ChangeNotifierProvider(create: (_) => RecipesProvider()),  // ✅ Добавить провайдер
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const PheTrackerApp(),
     ),
@@ -115,47 +118,70 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 1;
 
+  @override
+  void initState() {
+    super.initState();
+    // Check admin status when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AdminProvider>(context, listen: false).checkAdminStatus();
+    });
+  }
+
   final List<Widget> _screens = const [
     ArticlesScreen(),
     HomeScreen(),
     RecipesScreen(),
     SettingsScreen(),
+    AdminPanelScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
+    return Consumer2<UserProvider, AdminProvider>(
+      builder: (context, userProvider, adminProvider, child) {
+        // Build navigation destinations dynamically
+        final destinations = <NavigationDestination>[
+          const NavigationDestination(
             icon: Icon(Icons.article_outlined),
             selectedIcon: Icon(Icons.article),
             label: 'Статьи',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.book_outlined),
             selectedIcon: Icon(Icons.book),
             label: 'Дневник',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.restaurant_menu_outlined),
             selectedIcon: Icon(Icons.restaurant_menu),
             label: 'Рецепты',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Настройки',
           ),
-        ],
-      ),
+          if (adminProvider.isAdmin)
+            const NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings),
+              label: 'Админ',
+            ),
+        ];
+
+        return Scaffold(
+          body: _screens[_currentIndex],
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            destinations: destinations,
+          ),
+        );
+      },
     );
   }
 }

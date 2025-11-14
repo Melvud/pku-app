@@ -46,6 +46,15 @@ dependencies:
   
   # URL Launcher
   url_launcher: ^6.3.1
+  
+  # File Picker for PDF upload
+  file_picker: ^8.1.4
+  
+  # PDF Viewer
+  syncfusion_flutter_pdfviewer: ^27.1.58
+  
+  # Firebase Storage for PDF files
+  firebase_storage: ^12.3.4
 
 dev_dependencies:
   flutter_test:
