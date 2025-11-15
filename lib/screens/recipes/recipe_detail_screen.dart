@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/widget.recipe.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/recipe.dart';
 import '../../models/recipe_comment.dart';
 import '../../providers/recipes_provider.dart';
 import '../../providers/user_provider.dart';
@@ -336,7 +337,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         ),
                   ),
                   const SizedBox(height: 16),
-                  ...recipe.ingredients.asMap().entries.map((entry) {
+                  ...widget.recipe.ingredients.asMap().entries.map((entry) {
                     final index = entry.key;
                     final ingredient = entry.value;
                     return Padding(
@@ -382,7 +383,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         ),
                   ),
                   const SizedBox(height: 16),
-                  ...recipe.instructions.asMap().entries.map((entry) {
+                  ...widget.recipe.instructions.asMap().entries.map((entry) {
                     final index = entry.key;
                     final instruction = entry.value;
                     return Padding(
@@ -482,7 +483,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       }
 
                       final isLiked = currentRecipe.likedBy.contains(
-                        Provider.of<UserProvider>(context, listen: false).userProfile?.userId ?? '',
+                        FirebaseAuth.instance.currentUser?.uid ?? '',
                       );
 
                       return Card(
