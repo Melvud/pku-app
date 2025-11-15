@@ -196,115 +196,164 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Шаг ${_steps.length + 1}'),
-              content: SingleChildScrollView(
+            return Dialog(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextField(
-                      controller: controller,
-                      decoration: const InputDecoration(
-                        labelText: 'Описание шага *',
-                        hintText: 'Нарежьте яблоко на кусочки...',
+                    // Title
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Шаг ${_steps.length + 1}',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
-                      maxLines: 3,
-                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    const SizedBox(height: 16),
-                    if (stepImage != null) ...[
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              stepImage!,
-                              width: double.infinity,
-                              height: 150,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.black54,
+                    const Divider(height: 1),
+
+                    // Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(
+                                labelText: 'Описание шага *',
+                                hintText: 'Нарежьте яблоко на кусочки...',
+                                border: OutlineInputBorder(),
                               ),
-                              onPressed: () {
-                                setDialogState(() {
-                                  stepImage = null;
-                                });
-                              },
+                              maxLines: 3,
+                              textCapitalization: TextCapitalization.sentences,
                             ),
+                            const SizedBox(height: 16),
+
+                            // Photo preview
+                            if (stepImage != null) ...[
+                              Container(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.file(
+                                        stepImage!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: IconButton(
+                                        icon: const Icon(Icons.close, color: Colors.white),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: Colors.black87,
+                                          padding: const EdgeInsets.all(8),
+                                        ),
+                                        onPressed: () {
+                                          setDialogState(() {
+                                            stepImage = null;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+
+                            // Photo button
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  final XFile? image = await _imagePicker.pickImage(
+                                    source: ImageSource.gallery,
+                                  );
+
+                                  if (image != null && context.mounted) {
+                                    final croppedFile = await ImageCropper().cropImage(
+                                      sourcePath: image.path,
+                                      uiSettings: [
+                                        AndroidUiSettings(
+                                          toolbarTitle: 'Обрезать фото',
+                                          toolbarColor: Theme.of(context).colorScheme.primary,
+                                          toolbarWidgetColor: Colors.white,
+                                          activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+                                          lockAspectRatio: false,
+                                          hideBottomControls: true,
+                                        ),
+                                        IOSUiSettings(
+                                          title: 'Обрезать фото',
+                                          aspectRatioLockEnabled: false,
+                                        ),
+                                      ],
+                                    );
+
+                                    if (croppedFile != null) {
+                                      setDialogState(() {
+                                        stepImage = File(croppedFile.path);
+                                      });
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Ошибка выбора фото: $e'),
+                                        backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.add_photo_alternate),
+                              label: Text(stepImage == null ? 'Добавить фото' : 'Изменить фото'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Actions
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Отмена'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () {
+                              if (controller.text.isNotEmpty) {
+                                Navigator.pop(context, true);
+                              }
+                            },
+                            child: const Text('Добавить'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        try {
-                          final XFile? image = await _imagePicker.pickImage(
-                            source: ImageSource.gallery,
-                          );
-
-                          if (image != null) {
-                            // Crop the image
-                            final croppedFile = await ImageCropper().cropImage(
-                              sourcePath: image.path,
-                              uiSettings: [
-                                AndroidUiSettings(
-                                  toolbarTitle: 'Обрезать фото',
-                                  toolbarColor: Theme.of(context).colorScheme.primary,
-                                  toolbarWidgetColor: Colors.white,
-                                  activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
-                                  lockAspectRatio: false,
-                                  hideBottomControls: true,
-                                ),
-                                IOSUiSettings(
-                                  title: 'Обрезать фото',
-                                  aspectRatioLockEnabled: false,
-                                ),
-                              ],
-                            );
-
-                            if (croppedFile != null) {
-                              setDialogState(() {
-                                stepImage = File(croppedFile.path);
-                              });
-                            }
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Ошибка: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.add_photo_alternate),
-                      label: Text(stepImage == null ? 'Добавить фото' : 'Изменить фото'),
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Отмена'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    if (controller.text.isNotEmpty) {
-                      Navigator.pop(context, true);
-                    }
-                  },
-                  child: const Text('Добавить'),
-                ),
-              ],
             );
           },
         );
