@@ -17,6 +17,7 @@ class RecipeComment {
   final String text;
   final DateTime createdAt;
   final CommentStatus status;
+  final String? parentCommentId; // For replies
 
   RecipeComment({
     required this.id,
@@ -26,6 +27,7 @@ class RecipeComment {
     required this.text,
     required this.createdAt,
     required this.status,
+    this.parentCommentId,
   });
 
   Map<String, dynamic> toFirestore() {
@@ -36,6 +38,7 @@ class RecipeComment {
       'text': text,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
+      'parentCommentId': parentCommentId,
     };
   }
 
@@ -50,8 +53,9 @@ class RecipeComment {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: CommentStatus.values.firstWhere(
         (e) => e.name == data['status'],
-        orElse: () => CommentStatus.pending,
+        orElse: () => CommentStatus.approved,
       ),
+      parentCommentId: data['parentCommentId'],
     );
   }
 }

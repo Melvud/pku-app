@@ -19,6 +19,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   List<RecipeComment> _comments = [];
   bool _isLoadingComments = false;
   final TextEditingController _commentController = TextEditingController();
+  String? _replyingToCommentId;
+  String? _replyingToAuthorName;
 
   @override
   void initState() {
@@ -53,15 +55,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         recipeId: widget.recipe.id,
         text: _commentController.text.trim(),
         authorName: userProvider.userProfile?.name ?? 'Аноним',
+        parentCommentId: _replyingToCommentId,
       );
       
       _commentController.clear();
+      setState(() {
+        _replyingToCommentId = null;
+        _replyingToAuthorName = null;
+      });
+      
+      // Reload comments immediately
+      await _loadComments();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Комментарий отправлен на модерацию'),
+            content: Text('Комментарий опубликован'),
             behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -465,7 +476,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Likes section
+                  // Likes and Comments section - more compact
                   Consumer<RecipesProvider>(
                     builder: (context, provider, child) {
                       // Find the updated recipe from the provider
@@ -488,24 +499,51 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                       return Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
                             children: [
-                              IconButton(
-                                onPressed: _toggleLike,
-                                icon: Icon(
-                                  isLiked ? Icons.favorite : Icons.favorite_border,
-                                  color: isLiked ? Colors.red : Colors.grey,
-                                  size: 28,
+                              InkWell(
+                                onTap: _toggleLike,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isLiked ? Icons.favorite : Icons.favorite_border,
+                                        color: isLiked ? Colors.red : Colors.grey,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${currentRecipe.likesCount}',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${currentRecipe.likesCount} ${_pluralizeLikes(currentRecipe.likesCount)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              const SizedBox(width: 16),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.comment_outlined,
+                                    color: Colors.grey.shade600,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${_comments.length}',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -516,47 +554,95 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   const SizedBox(height: 24),
 
                   // Comments section
-                  Text(
-                    'Комментарии',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      Text(
+                        'Комментарии',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      if (_comments.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_comments.length}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
                         ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 16),
 
                   // Add comment field
                   Card(
+                    elevation: 0,
+                    color: Colors.grey.shade50,
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_replyingToCommentId != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.reply, size: 16, color: color),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Ответ для $_replyingToAuthorName',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: color,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: 18),
+                                    onPressed: () {
+                                      setState(() {
+                                        _replyingToCommentId = null;
+                                        _replyingToAuthorName = null;
+                                      });
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           TextField(
                             controller: _commentController,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Напишите комментарий...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Spacer(),
-                              FilledButton.icon(
-                                onPressed: _addComment,
-                                icon: const Icon(Icons.send, size: 18),
-                                label: const Text('Отправить'),
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              hintText: 'Написать комментарий...',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Комментарий будет опубликован после проверки модератором',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
+                              contentPadding: const EdgeInsets.all(12),
+                              suffixIcon: IconButton(
+                                onPressed: _addComment,
+                                icon: Icon(Icons.send, color: color),
+                              ),
                             ),
                           ),
                         ],
@@ -570,6 +656,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     const Center(child: CircularProgressIndicator())
                   else if (_comments.isEmpty)
                     Card(
+                      elevation: 0,
                       color: Colors.grey.shade50,
                       child: const Padding(
                         padding: EdgeInsets.all(24),
@@ -586,54 +673,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     )
                   else
-                    ..._comments.map((comment) {
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: color.withOpacity(0.2),
-                                    child: Icon(Icons.person, color: color, size: 20),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          comment.authorName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        Text(
-                                          _formatDate(comment.createdAt),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                comment.text,
-                                style: const TextStyle(fontSize: 14, height: 1.5),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
+                    ..._buildCommentTree(),
                   const SizedBox(height: 32),
                 ],
               ),
@@ -652,6 +692,133 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     } else {
       return 'лайков';
     }
+  }
+
+  List<Widget> _buildCommentTree() {
+    final topLevelComments = _comments.where((c) => c.parentCommentId == null).toList();
+    final widgets = <Widget>[];
+    
+    for (final comment in topLevelComments) {
+      widgets.add(_buildCommentCard(comment, 0));
+      // Find replies
+      final replies = _comments.where((c) => c.parentCommentId == comment.id).toList();
+      for (final reply in replies) {
+        widgets.add(_buildCommentCard(reply, 1));
+      }
+    }
+    
+    return widgets;
+  }
+
+  Widget _buildCommentCard(RecipeComment comment, int level) {
+    final color = _getCategoryColor();
+    final isAuthor = comment.authorId == widget.recipe.authorId;
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    
+    return Padding(
+      padding: EdgeInsets.only(
+        left: level * 32.0,
+        bottom: 8,
+      ),
+      child: Card(
+        elevation: level == 0 ? 1 : 0,
+        color: level == 0 ? null : Colors.grey.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: color.withOpacity(0.2),
+                    radius: 16,
+                    child: Icon(Icons.person, color: color, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              comment.authorName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            if (isAuthor) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Автор',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatDate(comment.createdAt),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                comment.text,
+                style: const TextStyle(fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (level == 0)
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _replyingToCommentId = comment.id;
+                          _replyingToAuthorName = comment.authorName;
+                        });
+                      },
+                      icon: Icon(Icons.reply, size: 16, color: color),
+                      label: Text(
+                        'Ответить',
+                        style: TextStyle(fontSize: 12, color: color),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {

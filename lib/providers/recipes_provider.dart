@@ -160,6 +160,7 @@ class RecipesProvider with ChangeNotifier {
     required String recipeId,
     required String text,
     required String authorName,
+    String? parentCommentId,
   }) async {
     if (_auth.currentUser == null) return;
 
@@ -171,7 +172,8 @@ class RecipesProvider with ChangeNotifier {
         authorName: authorName,
         text: text,
         createdAt: DateTime.now(),
-        status: CommentStatus.pending, // Always start as pending
+        status: CommentStatus.approved, // Immediately approved
+        parentCommentId: parentCommentId,
       );
       
       await _firestore.collection('recipe_comments').add(comment.toFirestore());
@@ -190,7 +192,7 @@ class RecipesProvider with ChangeNotifier {
           .collection('recipe_comments')
           .where('recipeId', isEqualTo: recipeId)
           .where('status', isEqualTo: CommentStatus.approved.name)
-          .orderBy('createdAt', descending: true)
+          .orderBy('createdAt', descending: false)
           .get();
 
       return snapshot.docs
@@ -199,6 +201,18 @@ class RecipesProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error getting comments: $e');
       return [];
+    }
+  }
+
+  // Delete comment (admin only)
+  Future<void> deleteComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).delete();
+      
+      debugPrint('✅ Comment deleted: $commentId');
+    } catch (e) {
+      debugPrint('❌ Error deleting comment: $e');
+      rethrow;
     }
   }
 
