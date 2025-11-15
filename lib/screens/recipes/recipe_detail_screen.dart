@@ -66,13 +66,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         _replyingToAuthorName = null;
       });
       
+      // Small delay to ensure Firestore write completes
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       // Reload comments immediately
       await _loadComments();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Комментарий отправлен на модерацию'),
+            content: Text('Комментарий опубликован'),
             behavior: SnackBarBehavior.floating,
             duration: Duration(seconds: 2),
           ),
