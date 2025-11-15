@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_provider.dart';
-import '../../widgets/app_header.dart';
 import 'statistics_tab.dart';
 import 'recipes_approval_tab.dart';
 import 'articles_management_tab.dart';
@@ -42,58 +41,47 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          AppHeader(
-            title: 'Панель администратора',
-            subtitle: 'Управление приложением',
-            expandedHeight: 140,
-            bottom: Container(
-              color: Theme.of(context).colorScheme.surface,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                indicatorWeight: 3,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-                tabs: const [
-                  Tab(
-                    icon: Icon(Icons.bar_chart, size: 18),
-                    text: 'Статистика',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.restaurant_menu, size: 18),
-                    text: 'Рецепты',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.article, size: 18),
-                    text: 'Статьи',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.comment, size: 18),
-                    text: 'Комментарии',
-                  ),
-                ],
-              ),
-            ),
+      appBar: AppBar(
+        title: const Text('Панель администратора'),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Theme.of(context).colorScheme.primary,
+          indicatorWeight: 3,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
           ),
-          SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [
-                StatisticsTab(),
-                RecipesApprovalTab(),
-                ArticlesManagementTab(),
-                CommentsModerationTab(),
-              ],
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.bar_chart, size: 18),
+              text: 'Статистика',
             ),
-          ),
+            Tab(
+              icon: Icon(Icons.restaurant_menu, size: 18),
+              text: 'Рецепты',
+            ),
+            Tab(
+              icon: Icon(Icons.article, size: 18),
+              text: 'Статьи',
+            ),
+            Tab(
+              icon: Icon(Icons.comment, size: 18),
+              text: 'Комментарии',
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          StatisticsTab(),
+          RecipesApprovalTab(),
+          ArticlesManagementTab(),
+          CommentsModerationTab(),
         ],
       ),
     );
