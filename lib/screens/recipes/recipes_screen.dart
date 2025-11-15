@@ -204,19 +204,16 @@ class _RecipesScreenState extends State<RecipesScreen> {
 
               return SliverPadding(
                 padding: const EdgeInsets.all(16),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 0.68,
-                  ),
+                sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final recipe = filteredRecipes[index];
-                      return _RecipeCard(
-                        recipe: recipe,
-                        showStatus: _showMyRecipes,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _RecipeCard(
+                          recipe: recipe,
+                          showStatus: _showMyRecipes,
+                        ),
                       );
                     },
                     childCount: filteredRecipes.length,
@@ -341,31 +338,65 @@ class _RecipeCard extends StatelessWidget {
             ),
           );
         },
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image or Placeholder
             Container(
-              height: 120,
+              width: 140,
+              height: 140,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    color.withOpacity(0.7),
-                    color,
-                  ],
-                ),
+                gradient: recipe.imageUrl == null
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          color.withOpacity(0.7),
+                          color,
+                        ],
+                      )
+                    : null,
               ),
               child: Stack(
                 children: [
-                  Center(
-                    child: Icon(
-                      _getCategoryIcon(),
-                      size: 48,
-                      color: Colors.white,
+                  // Show image if available, otherwise show icon
+                  if (recipe.imageUrl != null)
+                    Image.network(
+                      recipe.imageUrl!,
+                      width: 140,
+                      height: 140,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback to icon if image fails to load
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                color.withOpacity(0.7),
+                                color,
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              _getCategoryIcon(),
+                              size: 48,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    Center(
+                      child: Icon(
+                        _getCategoryIcon(),
+                        size: 48,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
                   if (recipe.isOfficial && !showStatus)
                     Positioned(
                       top: 8,
@@ -510,7 +541,7 @@ class _RecipeCard extends StatelessWidget {
             // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -519,108 +550,132 @@ class _RecipeCard extends StatelessWidget {
                       recipe.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(
                           Icons.access_time,
-                          size: 12,
+                          size: 14,
                           color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 4),
                         Text(
                           '${recipe.cookingTimeMinutes} мин',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 12),
                         Icon(
                           Icons.restaurant_menu,
-                          size: 12,
+                          size: 14,
                           color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 4),
                         Text(
                           '${recipe.servings} порц.',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: Colors.grey.shade600,
                           ),
                         ),
                       ],
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 8),
+                    // Ingredients
+                    if (recipe.ingredients.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.shopping_basket,
+                            size: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Ингредиенты:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        recipe.ingredients.take(3).map((i) => i.name).join(', ') +
+                            (recipe.ingredients.length > 3 ? '...' : ''),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    // Nutrition info
                     Row(
                       children: [
                         if (recipe.likesCount > 0) ...[
                           Icon(
                             Icons.favorite,
-                            size: 12,
+                            size: 14,
                             color: Colors.red.shade400,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 4),
                           Text(
                             '${recipe.likesCount}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: Colors.grey.shade600,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 12),
                         ],
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.shade50,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Phe: ${recipe.phePer100g.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.purple.shade700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Б: ${recipe.proteinPer100g.toStringAsFixed(1)}г',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Phe: ${recipe.phePer100g.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Б: ${recipe.proteinPer100g.toStringAsFixed(1)}г',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade700,
+                            ),
                           ),
                         ),
                       ],
