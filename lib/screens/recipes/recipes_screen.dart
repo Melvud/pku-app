@@ -128,10 +128,14 @@ class _RecipesScreenState extends State<RecipesScreen> {
                   _CategoryChip(
                     label: 'Мои рецепты',
                     isSelected: _showMyRecipes,
-                    onTap: () => setState(() {
-                      _showMyRecipes = true;
-                      _selectedCategory = null;
-                    }),
+                    onTap: () {
+                      setState(() {
+                        _showMyRecipes = true;
+                        _selectedCategory = null;
+                      });
+                      // Reload my recipes when switching to this tab
+                      Provider.of<RecipesProvider>(context, listen: false).loadMyRecipes();
+                    },
                   ),
                   _CategoryChip(
                     label: 'Все',

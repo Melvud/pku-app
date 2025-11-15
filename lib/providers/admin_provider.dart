@@ -21,6 +21,9 @@ class AdminProvider with ChangeNotifier {
   List<RecipeComment> _pendingComments = [];
   List<RecipeComment> get pendingComments => _pendingComments;
 
+  List<RecipeComment> _allComments = [];
+  List<RecipeComment> get allComments => _allComments;
+
   Map<String, dynamic> _appStats = {};
   Map<String, dynamic> get appStats => _appStats;
 
@@ -228,18 +231,24 @@ class AdminProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Load all comments (not just pending) since comments are now approved by default
       final snapshot = await _firestore
           .collection('recipe_comments')
-          .where('status', isEqualTo: CommentStatus.pending.name)
           .orderBy('createdAt', descending: true)
           .get();
 
-      _pendingComments = snapshot.docs
+      _allComments = snapshot.docs
           .map((doc) => RecipeComment.fromFirestore(doc))
           .toList();
+      
+      // Also keep pending list for backward compatibility
+      _pendingComments = _allComments
+          .where((c) => c.status == CommentStatus.pending)
+          .toList();
     } catch (e) {
-      debugPrint('Error loading pending comments: $e');
+      debugPrint('Error loading comments: $e');
       _pendingComments = [];
+      _allComments = [];
     }
 
     _isLoadingComments = false;
