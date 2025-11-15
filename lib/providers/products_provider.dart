@@ -199,51 +199,69 @@ class ProductsProvider with ChangeNotifier {
   Future<void> loadProducts({bool forceSync = false}) async {
     if (_isLoading || _isSyncing) return;
 
-    _isLoading = true;
-    _error = null;
-    _syncStatus = 'Загрузка локальных данных...';
-    _syncProgress = 0.1;
-    notifyListeners();
-
     try {
-      // Step 1: Try to load from local SQLite cache first
+      // Step 1: Проверяем нужна ли синхронизация ДО загрузки данных из кэша
       final localDb = LocalDatabaseService();
-      final cachedProducts = await localDb.getCachedProducts();
+      final shouldSync = _products.isEmpty || _shouldSync() || forceSync;
+      final hasLocalCache = await localDb.hasCache('products');
 
-      if (cachedProducts.isNotEmpty) {
-        _products = cachedProducts.map((map) => _productFromMap(map)).toList();
-        _syncProgress = 0.3;
-        _syncStatus = 'Загружено ${_products.length} продуктов из кэша';
-        debugPrint('✅ Loaded ${_products.length} products from local cache');
-        notifyListeners();
-      } else {
-        // Fallback to Firestore cache if local cache is empty
-        final snapshot = await _firestore
-            .collection('products')
-            .orderBy('name')
-            .get(const GetOptions(source: Source.cache));
+      // Step 2: Если нужна синхронизация - запускаем её сразу
+      if (shouldSync) {
+        await syncFromGoogleSheets();
+        return;
+      }
 
-        if (snapshot.docs.isNotEmpty) {
-          _products = snapshot.docs
-              .map((doc) => Product.fromFirestore(doc))
-              .toList();
-          _syncProgress = 0.3;
-          _syncStatus = 'Загружено ${_products.length} продуктов';
+      // Step 3: Если синхронизация не нужна - загружаем из кэша
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      if (hasLocalCache) {
+        final cachedProducts = await localDb.getCachedProducts();
+        if (cachedProducts.isNotEmpty) {
+          _products = cachedProducts.map((map) => _productFromMap(map)).toList();
+          debugPrint('✅ Loaded ${_products.length} products from local cache');
+          _isLoading = false;
           notifyListeners();
+
+          // Проверяем обновления в фоне
+          _checkForUpdatesInBackground();
+          return;
         }
       }
 
-      // Step 2: Check if we need to sync
-      if (_products.isEmpty || _shouldSync() || forceSync) {
-        await syncFromGoogleSheets();
-      } else {
+      // Step 4: Если локального кэша нет - пробуем Firestore cache
+      final snapshot = await _firestore
+          .collection('products')
+          .orderBy('name')
+          .get(const GetOptions(source: Source.cache));
+
+      if (snapshot.docs.isNotEmpty) {
+        _products = snapshot.docs
+            .map((doc) => Product.fromFirestore(doc))
+            .toList();
+        debugPrint('✅ Loaded ${_products.length} products from Firestore cache');
+        _isLoading = false;
+        notifyListeners();
+
+        // Сохраняем в локальный кэш для следующего раза
+        await _saveCacheFromFirestore(snapshot.docs);
         _checkForUpdatesInBackground();
+        return;
       }
+
+      // Step 5: Если ничего нет - делаем полную синхронизацию
+      _isLoading = false;
+      notifyListeners();
+      await syncFromGoogleSheets();
 
     } catch (e) {
       _error = 'Ошибка загрузки продуктов: $e';
+      _isLoading = false;
       debugPrint(_error);
+      notifyListeners();
 
+      // Fallback: пробуем загрузить с сервера
       try {
         final snapshot = await _firestore
             .collection('products')
@@ -253,14 +271,39 @@ class ProductsProvider with ChangeNotifier {
         _products = snapshot.docs
             .map((doc) => Product.fromFirestore(doc))
             .toList();
+        notifyListeners();
       } catch (serverError) {
         debugPrint('Server load error: $serverError');
       }
-    } finally {
-      _isLoading = false;
-      _syncProgress = 1.0;
-      _syncStatus = '';
-      notifyListeners();
+    }
+  }
+
+  Future<void> _saveCacheFromFirestore(List<DocumentSnapshot> docs) async {
+    try {
+      final localDb = LocalDatabaseService();
+      final productsForCache = docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['name'],
+          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
+          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
+          'fatPer100g': data['fatPer100g'],
+          'carbsPer100g': data['carbsPer100g'],
+          'caloriesPer100g': data['caloriesPer100g'],
+          'category': data['category'] ?? 'other',
+          'source': data['source'],
+          'barcode': data['barcode'],
+          'googleSheetsId': data['googleSheetsId'],
+          'notes': data['notes'],
+          'createdBy': data['createdBy'],
+          'isUserCreated': data['isUserCreated'] ?? false,
+        };
+      }).toList();
+      await localDb.cacheProducts(productsForCache);
+      debugPrint('✅ Saved ${productsForCache.length} products to local cache');
+    } catch (e) {
+      debugPrint('Error saving cache: $e');
     }
   }
 
@@ -272,9 +315,9 @@ class ProductsProvider with ChangeNotifier {
       proteinPer100g: (map['proteinPer100g'] ?? 0).toDouble(),
       pheMeasuredPer100g: map['pheMeasuredPer100g']?.toDouble(),
       pheEstimatedPer100g: (map['phePer100g'] ?? 0).toDouble(),
-      fatPer100g: (map['fatPer100g'] ?? 0).toDouble(),
-      carbsPer100g: (map['carbsPer100g'] ?? 0).toDouble(),
-      caloriesPer100g: (map['caloriesPer100g'] ?? 0).toDouble(),
+      fatPer100g: map['fatPer100g'] != null ? (map['fatPer100g'] as num).toDouble() : null,
+      carbsPer100g: map['carbsPer100g'] != null ? (map['carbsPer100g'] as num).toDouble() : null,
+      caloriesPer100g: map['caloriesPer100g'] != null ? (map['caloriesPer100g'] as num).toDouble() : null,
       source: map['source'] ?? 'Google Sheets',
       notes: map['notes'],
       barcode: map['barcode'],
@@ -437,14 +480,16 @@ class ProductsProvider with ChangeNotifier {
           'name': data['name'],
           'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
           'proteinPer100g': data['proteinPer100g'] ?? 0.0,
-          'fatPer100g': data['fatPer100g'] ?? 0.0,
-          'carbsPer100g': data['carbsPer100g'] ?? 0.0,
-          'caloriesPer100g': data['caloriesPer100g'] ?? 0.0,
+          'fatPer100g': data['fatPer100g'],
+          'carbsPer100g': data['carbsPer100g'],
+          'caloriesPer100g': data['caloriesPer100g'],
           'category': data['category'] ?? 'other',
           'source': data['source'],
           'barcode': data['barcode'],
           'googleSheetsId': data['googleSheetsId'],
           'notes': data['notes'],
+          'createdBy': data['createdBy'],
+          'isUserCreated': data['isUserCreated'] ?? false,
         };
       }).toList();
 
@@ -492,13 +537,16 @@ class ProductsProvider with ChangeNotifier {
         'name': product.name,
         'phePer100g': product.pheToUse,
         'proteinPer100g': product.proteinPer100g,
-        'fatPer100g': product.fatPer100g ?? 0.0,
-        'carbsPer100g': product.carbsPer100g ?? 0.0,
-        'caloriesPer100g': product.caloriesPer100g ?? 0.0,
+        'fatPer100g': product.fatPer100g,
+        'carbsPer100g': product.carbsPer100g,
+        'caloriesPer100g': product.caloriesPer100g,
         'category': product.category,
         'source': product.source,
         'barcode': product.barcode,
+        'googleSheetsId': product.googleSheetsId,
         'notes': product.notes,
+        'createdBy': currentUser.uid,
+        'isUserCreated': true,
       };
 
       await localDb.cacheProducts([productForCache]);
@@ -509,7 +557,7 @@ class ProductsProvider with ChangeNotifier {
       _products.sort((a, b) => a.name.compareTo(b.name));
 
       notifyListeners();
-      debugPrint('✅ User product added: ${product.name}');
+      debugPrint('✅ User product added and saved locally: ${product.name}');
     } catch (e) {
       _error = 'Ошибка добавления продукта: $e';
       debugPrint(_error);
@@ -523,7 +571,35 @@ class ProductsProvider with ChangeNotifier {
           .collection('products')
           .doc(product.id)
           .update(product.toFirestore());
-      await loadProducts();
+
+      // Update in local cache
+      final localDb = LocalDatabaseService();
+      final productForCache = {
+        'id': product.id,
+        'name': product.name,
+        'phePer100g': product.pheToUse,
+        'proteinPer100g': product.proteinPer100g,
+        'fatPer100g': product.fatPer100g,
+        'carbsPer100g': product.carbsPer100g,
+        'caloriesPer100g': product.caloriesPer100g,
+        'category': product.category,
+        'source': product.source,
+        'barcode': product.barcode,
+        'googleSheetsId': product.googleSheetsId,
+        'notes': product.notes,
+        'createdBy': null,
+        'isUserCreated': false,
+      };
+      await localDb.cacheProducts([productForCache]);
+
+      // Update in local list
+      final index = _products.indexWhere((p) => p.id == product.id);
+      if (index != -1) {
+        _products[index] = product;
+        notifyListeners();
+      }
+
+      debugPrint('✅ Product updated: ${product.name}');
     } catch (e) {
       _error = 'Ошибка обновления продукта: $e';
       debugPrint(_error);

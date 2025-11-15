@@ -26,7 +26,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -91,6 +91,12 @@ class LocalDatabaseService {
         carbsPer100g REAL NOT NULL,
         caloriesPer100g REAL NOT NULL,
         category TEXT,
+        source TEXT,
+        barcode TEXT,
+        googleSheetsId TEXT,
+        notes TEXT,
+        createdBy TEXT,
+        isUserCreated INTEGER DEFAULT 0,
         lastUpdated INTEGER NOT NULL
       )
     ''');
@@ -129,6 +135,27 @@ class LocalDatabaseService {
       await db.execute('ALTER TABLE recipes ADD COLUMN likedBy TEXT');
       await db.execute('ALTER TABLE recipes ADD COLUMN approvedAt INTEGER');
       await db.execute('ALTER TABLE recipes ADD COLUMN rejectionReason TEXT');
+    }
+    if (oldVersion < 3) {
+      // Add new columns for products in version 3
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN source TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN barcode TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN googleSheetsId TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN notes TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN createdBy TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN isUserCreated INTEGER DEFAULT 0');
+      } catch (_) {}
     }
   }
 
@@ -256,10 +283,16 @@ class LocalDatabaseService {
           'name': product['name'],
           'phePer100g': product['phePer100g'],
           'proteinPer100g': product['proteinPer100g'],
-          'fatPer100g': product['fatPer100g'],
-          'carbsPer100g': product['carbsPer100g'],
-          'caloriesPer100g': product['caloriesPer100g'],
+          'fatPer100g': product['fatPer100g'] ?? 0.0,
+          'carbsPer100g': product['carbsPer100g'] ?? 0.0,
+          'caloriesPer100g': product['caloriesPer100g'] ?? 0.0,
           'category': product['category'],
+          'source': product['source'],
+          'barcode': product['barcode'],
+          'googleSheetsId': product['googleSheetsId'],
+          'notes': product['notes'],
+          'createdBy': product['createdBy'],
+          'isUserCreated': (product['isUserCreated'] ?? false) ? 1 : 0,
           'lastUpdated': DateTime.now().millisecondsSinceEpoch,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -272,7 +305,14 @@ class LocalDatabaseService {
 
   Future<List<Map<String, dynamic>>> getCachedProducts() async {
     final db = await database;
-    return await db.query('products');
+    final List<Map<String, dynamic>> maps = await db.query('products');
+
+    // Convert isUserCreated from int to bool
+    return maps.map((map) {
+      final decoded = Map<String, dynamic>.from(map);
+      decoded['isUserCreated'] = map['isUserCreated'] == 1;
+      return decoded;
+    }).toList();
   }
 
   // USER PROFILE METHODS
