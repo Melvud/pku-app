@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/products_provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/app_header.dart';
 import '../auth/login_screen.dart';
 import '../../providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
@@ -23,31 +24,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Настройки'),
-      ),
       body: Consumer<UserProvider>(
         builder: (context, userProvider, child) {
           final profile = userProvider.userProfile;
           
-          return ListView(
-            children: [
-              // Profile Section
-              if (profile != null)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const EditProfileScreen(),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
+          return CustomScrollView(
+            slivers: [
+              AppHeader(
+                title: 'Настройки',
+                subtitle: profile != null ? 'Профиль и настройки' : 'Настройки приложения',
+                expandedHeight: 120,
+              ),
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  // Profile Section
+                  if (profile != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Card(
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditProfileScreen(),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
@@ -347,8 +352,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
+                  ),
+                  const SizedBox(height: 32),
+                ]),
               ),
-              const SizedBox(height: 32),
             ],
           );
         },

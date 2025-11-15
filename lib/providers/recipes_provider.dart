@@ -3,10 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/recipe_comment.dart';
+import '../services/local_database_service.dart';
 
 class RecipesProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final LocalDatabaseService _localDb = LocalDatabaseService();
 
   List<Recipe> _recipes = [];
   List<Recipe> _myRecipes = [];
@@ -18,21 +20,53 @@ class RecipesProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Загрузка одобренных рецептов
+  // Загрузка одобренных рецептов с кешированием
   Future<void> loadApprovedRecipes() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      // Load from cache first
+      final cachedRecipes = await _localDb.getCachedRecipes();
+      if (cachedRecipes.isNotEmpty) {
+        _recipes = cachedRecipes
+            .where((r) => r['status'] == RecipeStatus.approved.name)
+            .map((r) => _recipeFromMap(r))
+            .toList();
+        debugPrint('✅ Loaded ${_recipes.length} recipes from cache');
+        _isLoading = false;
+        notifyListeners();
+      }
+
+      // Check if we should sync with Firebase
+      final shouldSync = await _localDb.shouldSyncWithFirebase('recipes');
+      if (!shouldSync) {
+        debugPrint('ℹ️ Using cached recipes (recent sync)');
+        return;
+      }
+
+      // Fetch from Firebase
+      debugPrint('🔄 Syncing recipes from Firebase...');
       final snapshot = await _firestore
           .collection('recipes')
           .where('status', isEqualTo: RecipeStatus.approved.name)
           .orderBy('createdAt', descending: true)
           .get();
 
-      _recipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
-      debugPrint('✅ Loaded ${_recipes.length} approved recipes');
+      final firebaseRecipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+      
+      // Update cache
+      await _localDb.cacheRecipes(
+        snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList(),
+      );
+
+      _recipes = firebaseRecipes;
+      debugPrint('✅ Loaded ${_recipes.length} approved recipes from Firebase');
     } catch (e) {
       _error = 'Ошибка загрузки рецептов: $e';
       debugPrint('❌ Error loading recipes: $e');
@@ -40,6 +74,42 @@ class RecipesProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Recipe _recipeFromMap(Map<String, dynamic> map) {
+    // Helper method to convert cached recipe map to Recipe object
+    return Recipe(
+      id: map['id'],
+      name: map['name'],
+      description: map['description'],
+      category: RecipeCategory.values.firstWhere(
+        (e) => e.name == map['category'],
+        orElse: () => RecipeCategory.breakfast,
+      ),
+      ingredients: (map['ingredients'] as List).cast<String>(),
+      instructions: (map['instructions'] as List).cast<String>(),
+      status: RecipeStatus.values.firstWhere(
+        (e) => e.name == map['status'],
+        orElse: () => RecipeStatus.pending,
+      ),
+      authorId: map['authorId'],
+      authorName: map['authorName'],
+      phePer100g: map['phePer100g'],
+      proteinPer100g: map['proteinPer100g'],
+      fatPer100g: map['fatPer100g'],
+      carbsPer100g: map['carbsPer100g'],
+      caloriesPer100g: map['caloriesPer100g'],
+      defaultServingSize: map['defaultServingSize'],
+      cookingTime: map['cookingTime'],
+      difficulty: map['difficulty'] != null
+          ? RecipeDifficulty.values.firstWhere(
+              (e) => e.name == map['difficulty'],
+              orElse: () => RecipeDifficulty.medium,
+            )
+          : null,
+      imageUrl: map['imageUrl'],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+    );
   }
 
   // Загрузка моих рецептов
@@ -185,13 +255,16 @@ class RecipesProvider with ChangeNotifier {
     }
   }
 
-  // Get comments for a recipe
+  // Get comments for a recipe (approved and reviewed comments)
   Future<List<RecipeComment>> getCommentsForRecipe(String recipeId) async {
     try {
       final snapshot = await _firestore
           .collection('recipe_comments')
           .where('recipeId', isEqualTo: recipeId)
-          .where('status', isEqualTo: CommentStatus.approved.name)
+          .where('status', whereIn: [
+            CommentStatus.approved.name,
+            CommentStatus.reviewed.name,
+          ])
           .orderBy('createdAt', descending: false)
           .get();
 

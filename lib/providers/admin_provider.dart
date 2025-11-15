@@ -4,10 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/article.dart';
 import '../models/recipe_comment.dart';
+import '../services/local_database_service.dart';
 
 class AdminProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final LocalDatabaseService _localDb = LocalDatabaseService();
 
   bool _isAdmin = false;
   bool get isAdmin => _isAdmin;
@@ -121,12 +123,30 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
-  // Load all articles
+  // Load all articles with caching
   Future<void> loadArticles() async {
     _isLoadingArticles = true;
     notifyListeners();
 
     try {
+      // Load from cache first
+      final cachedArticles = await _localDb.getCachedArticles();
+      if (cachedArticles.isNotEmpty) {
+        _articles = cachedArticles.map((a) => _articleFromMap(a)).toList();
+        debugPrint('✅ Loaded ${_articles.length} articles from cache');
+        _isLoadingArticles = false;
+        notifyListeners();
+      }
+
+      // Check if we should sync with Firebase
+      final shouldSync = await _localDb.shouldSyncWithFirebase('articles');
+      if (!shouldSync) {
+        debugPrint('ℹ️ Using cached articles (recent sync)');
+        return;
+      }
+
+      // Fetch from Firebase
+      debugPrint('🔄 Syncing articles from Firebase...');
       final snapshot = await _firestore
           .collection('articles')
           .orderBy('createdAt', descending: true)
@@ -135,8 +155,19 @@ class AdminProvider with ChangeNotifier {
       _articles = snapshot.docs
           .map((doc) => Article.fromFirestore(doc))
           .toList();
+
+      // Update cache
+      await _localDb.cacheArticles(
+        snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList(),
+      );
+
+      debugPrint('✅ Loaded ${_articles.length} articles from Firebase');
     } catch (e) {
-      debugPrint('Error loading articles: $e');
+      debugPrint('❌ Error loading articles: $e');
       _articles = [];
     }
 
@@ -144,11 +175,23 @@ class AdminProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Article _articleFromMap(Map<String, dynamic> map) {
+    return Article(
+      id: map['id'],
+      title: map['title'],
+      description: map['description'],
+      pdfUrl: map['pdfUrl'],
+      createdBy: map['createdBy'],
+      createdByName: map['createdByName'],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+    );
+  }
+
   // Add new article
   Future<void> addArticle(Article article) async {
     try {
       await _firestore.collection('articles').add(article.toFirestore());
-      await loadArticles(); // Reload articles
+      await loadArticles(); // Reload articles and update cache
     } catch (e) {
       debugPrint('Error adding article: $e');
       rethrow;
@@ -160,6 +203,11 @@ class AdminProvider with ChangeNotifier {
     try {
       await _firestore.collection('articles').doc(articleId).delete();
       _articles.removeWhere((a) => a.id == articleId);
+      
+      // Force refresh cache
+      await _localDb.clearTable('articles');
+      await loadArticles();
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting article: $e');
@@ -281,6 +329,21 @@ class AdminProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error rejecting comment: $e');
+      rethrow;
+    }
+  }
+
+  // Mark a comment as reviewed (keeps in public but removes from moderation)
+  Future<void> reviewComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.reviewed.name,
+      });
+
+      _pendingComments.removeWhere((c) => c.id == commentId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error reviewing comment: $e');
       rethrow;
     }
   }

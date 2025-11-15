@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/admin_provider.dart';
+import '../../widgets/app_header.dart';
 import 'pdf_viewer_screen.dart';
 import '../settings/help_screen.dart';
 
@@ -32,34 +33,10 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
 
           return CustomScrollView(
             slivers: [
-              SliverAppBar(
-                expandedHeight: 80,
-                floating: false,
-                pinned: true,
-                elevation: 0,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                title: Text(
-                  'Статьи',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.primary,
-                          Theme.of(context).colorScheme.secondary,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              AppHeader(
+                title: 'Статьи',
+                subtitle: 'Полезная информация о ФКУ',
+                expandedHeight: 120,
               ),
 
               if (isLoading)
