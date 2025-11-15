@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../providers/admin_provider.dart';
 import '../../models/recipe.dart';
 import '../recipes/recipe_detail_screen.dart';
+import '../recipes/edit_recipe_screen.dart';
 
 class RecommendedRecipesTab extends StatefulWidget {
   const RecommendedRecipesTab({super.key});
@@ -333,13 +334,19 @@ class _RecipeCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: () {
-                      // TODO: Implement edit recipe
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Редактирование будет добавлено позже'),
-                          behavior: SnackBarBehavior.floating,
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditRecipeScreen(
+                            recipe: recipe,
+                            isAdmin: true,
+                          ),
                         ),
-                      );
+                      ).then((_) {
+                        // Reload recommended recipes after editing
+                        Provider.of<AdminProvider>(context, listen: false)
+                            .loadRecommendedRecipes();
+                      });
                     },
                     icon: const Icon(Icons.edit, size: 18),
                     label: const Text('Изменить'),

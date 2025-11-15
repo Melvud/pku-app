@@ -195,20 +195,58 @@ class RecipesProvider with ChangeNotifier {
     }
   }
 
+  // Update recipe
+  Future<void> updateRecipe(Recipe recipe) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      // If recipe is not recommended, set status to pending for re-moderation
+      final updatedRecipe = recipe.isRecommended
+          ? recipe
+          : recipe.copyWith(status: RecipeStatus.pending);
+
+      await _firestore
+          .collection('recipes')
+          .doc(recipe.id)
+          .update(updatedRecipe.toFirestore());
+
+      // Update in local lists
+      final index = _myRecipes.indexWhere((r) => r.id == recipe.id);
+      if (index != -1) {
+        _myRecipes[index] = updatedRecipe;
+      }
+
+      // Remove from approved recipes if it's now pending
+      if (!recipe.isRecommended) {
+        _recipes.removeWhere((r) => r.id == recipe.id);
+      }
+
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+
+      notifyListeners();
+      debugPrint('✅ Recipe updated');
+    } catch (e) {
+      _error = 'Ошибка обновления рецепта: $e';
+      debugPrint('❌ Error updating recipe: $e');
+      rethrow;
+    }
+  }
+
   // Delete recipe
   Future<void> deleteRecipe(String recipeId) async {
     if (_auth.currentUser == null) return;
 
     try {
       await _firestore.collection('recipes').doc(recipeId).delete();
-      
+
       // Remove from local lists
       _myRecipes.removeWhere((r) => r.id == recipeId);
       _recipes.removeWhere((r) => r.id == recipeId);
-      
+
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
-      
+
       notifyListeners();
       debugPrint('✅ Recipe deleted');
     } catch (e) {
