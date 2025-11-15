@@ -23,13 +23,38 @@ enum RecipeStatus {
   const RecipeStatus(this.displayName);
 }
 
+class RecipeStep {
+  final String instruction;
+  final String? imageUrl;
+
+  RecipeStep({
+    required this.instruction,
+    this.imageUrl,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'instruction': instruction,
+      'imageUrl': imageUrl,
+    };
+  }
+
+  factory RecipeStep.fromMap(Map<String, dynamic> map) {
+    return RecipeStep(
+      instruction: map['instruction'] ?? '',
+      imageUrl: map['imageUrl'],
+    );
+  }
+}
+
 class Recipe {
   final String id;
   final String name;
   final String description;
   final RecipeCategory category;
   final List<RecipeIngredient> ingredients;
-  final List<String> instructions;
+  final List<String> instructions; // Keep for backward compatibility
+  final List<RecipeStep>? steps; // New field for steps with images
   final int servings;
   final int cookingTimeMinutes;
   final double phePer100g;
@@ -37,7 +62,7 @@ class Recipe {
   final double? fatPer100g;
   final double? carbsPer100g;
   final double? caloriesPer100g;
-  final String? imageUrl;
+  final String? imageUrl; // Cover image
   final String authorId;
   final String authorName;
   final RecipeStatus status;
@@ -55,6 +80,7 @@ class Recipe {
     required this.category,
     required this.ingredients,
     required this.instructions,
+    this.steps,
     required this.servings,
     required this.cookingTimeMinutes,
     required this.phePer100g,
@@ -73,6 +99,15 @@ class Recipe {
     this.likesCount = 0,
     this.likedBy = const [],
   });
+  
+  // Helper to get steps (either new format or old)
+  List<RecipeStep> get recipeSteps {
+    if (steps != null && steps!.isNotEmpty) {
+      return steps!;
+    }
+    // Convert old instructions to steps
+    return instructions.map((i) => RecipeStep(instruction: i)).toList();
+  }
 
   Map<String, dynamic> toFirestore() {
     return {
@@ -81,6 +116,7 @@ class Recipe {
       'category': category.name,
       'ingredients': ingredients.map((i) => i.toMap()).toList(),
       'instructions': instructions,
+      'steps': steps?.map((s) => s.toMap()).toList(),
       'servings': servings,
       'cookingTimeMinutes': cookingTimeMinutes,
       'phePer100g': phePer100g,
@@ -116,6 +152,9 @@ class Recipe {
               .toList() ??
           [],
       instructions: (data['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+      steps: (data['steps'] as List<dynamic>?)
+              ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
+              .toList(),
       servings: data['servings'] ?? 1,
       cookingTimeMinutes: data['cookingTimeMinutes'] ?? 0,
       phePer100g: (data['phePer100g'] ?? 0).toDouble(),

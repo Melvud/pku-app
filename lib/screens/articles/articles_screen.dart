@@ -33,7 +33,7 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 120,
+                expandedHeight: 80,
                 floating: false,
                 pinned: true,
                 elevation: 0,
@@ -43,6 +43,7 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
@@ -55,44 +56,6 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                           Theme.of(context).colorScheme.primary,
                           Theme.of(context).colorScheme.secondary,
                         ],
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.article,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Статьи',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Полезная информация о ФКУ',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
