@@ -31,6 +31,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     try {
+      // Check if we already have data loaded
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
+      
+      // If we already have profile and diary entries for today, skip loading
+      final hasProfile = userProvider.userProfile != null;
+      final today = DateTime.now();
+      final hasEntries = diaryProvider.selectedDate.year == today.year &&
+                        diaryProvider.selectedDate.month == today.month &&
+                        diaryProvider.selectedDate.day == today.day;
+      
+      if (hasProfile && hasEntries && _isLoading) {
+        // Data already loaded, just update UI state
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+      
       setState(() {
         _isLoading = true;
         _error = null;
@@ -46,11 +65,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (profile != null && mounted) {
-        Provider.of<UserProvider>(context, listen: false).updateUserProfile(profile);
+        userProvider.updateUserProfile(profile);
       }
 
       if (mounted) {
-        await Provider.of<DiaryProvider>(context, listen: false)
+        await diaryProvider
             .loadEntriesForDate(DateTime.now())
             .timeout(
           const Duration(seconds: 10),
