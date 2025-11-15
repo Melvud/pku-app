@@ -29,7 +29,10 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
-      productsProvider.loadProducts();
+      // Загружаем только если продукты ещё не загружены
+      if (productsProvider.products.isEmpty) {
+        productsProvider.loadProducts();
+      }
     });
   }
 
