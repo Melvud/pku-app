@@ -116,6 +116,7 @@ class ArticlesManagementTab extends StatelessWidget {
     final descriptionController = TextEditingController();
     File? selectedFile;
     String? fileName;
+    UploadTask? uploadTask;
 
     await showDialog(
       context: context,
@@ -233,18 +234,53 @@ class ArticlesManagementTab extends StatelessWidget {
 
                 Navigator.pop(context);
 
-                // Show uploading dialog
+                // Show uploading dialog with progress
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  builder: (context) => const AlertDialog(
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Загрузка файла...'),
-                      ],
+                  builder: (dialogContext) => StatefulBuilder(
+                    builder: (context, setDialogState) => PopScope(
+                      canPop: true,
+                      onPopInvoked: (didPop) {
+                        // Cancel upload if dialog is popped
+                        if (didPop) {
+                          uploadTask?.cancel();
+                        }
+                      },
+                      child: AlertDialog(
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            const Text('Загрузка файла...'),
+                            if (uploadTask != null)
+                              StreamBuilder<TaskSnapshot>(
+                                stream: uploadTask!.snapshotEvents,
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    final progress = snapshot.data!.bytesTransferred /
+                                        snapshot.data!.totalBytes;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Column(
+                                        children: [
+                                          LinearProgressIndicator(value: progress),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${(progress * 100).toStringAsFixed(0)}%',
+                                            style: const TextStyle(fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -256,8 +292,14 @@ class ArticlesManagementTab extends StatelessWidget {
                       .child('articles')
                       .child('${DateTime.now().millisecondsSinceEpoch}.pdf');
                   
-                  await storageRef.putFile(selectedFile!);
-                  final pdfUrl = await storageRef.getDownloadURL();
+                  // Create and track the upload task
+                  uploadTask = storageRef.putFile(selectedFile!);
+                  
+                  // Wait for upload to complete
+                  final snapshot = await uploadTask!;
+                  
+                  // Get download URL only after successful upload
+                  final pdfUrl = await snapshot.ref.getDownloadURL();
 
                   // Create article
                   final currentUser = FirebaseAuth.instance.currentUser;
@@ -286,7 +328,31 @@ class ArticlesManagementTab extends StatelessWidget {
                       ),
                     );
                   }
+                } on FirebaseException catch (e) {
+                  debugPrint('Firebase error uploading PDF: ${e.code} - ${e.message}');
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close uploading dialog
+                    String errorMessage = 'Ошибка загрузки файла';
+                    if (e.code == 'canceled') {
+                      errorMessage = 'Загрузка отменена';
+                    } else if (e.code == 'unauthorized') {
+                      errorMessage = 'Нет прав для загрузки файла';
+                    } else if (e.code == 'unknown') {
+                      errorMessage = 'Проверьте подключение к интернету';
+                    } else if (e.message != null) {
+                      errorMessage = 'Ошибка: ${e.message}';
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(errorMessage),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                  }
                 } catch (e) {
+                  debugPrint('Error uploading PDF: $e');
                   if (context.mounted) {
                     Navigator.pop(context); // Close uploading dialog
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -297,6 +363,9 @@ class ArticlesManagementTab extends StatelessWidget {
                       ),
                     );
                   }
+                } finally {
+                  // Clear the upload task reference
+                  uploadTask = null;
                 }
 
                 titleController.dispose();
