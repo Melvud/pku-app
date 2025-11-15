@@ -239,11 +239,13 @@ class ArticlesManagementTab extends StatelessWidget {
                   context: context,
                   barrierDismissible: false,
                   builder: (dialogContext) => StatefulBuilder(
-                    builder: (context, setDialogState) => WillPopScope(
-                      onWillPop: () async {
-                        // Cancel upload if user tries to close dialog
-                        uploadTask?.cancel();
-                        return true;
+                    builder: (context, setDialogState) => PopScope(
+                      canPop: true,
+                      onPopInvoked: (didPop) {
+                        // Cancel upload if dialog is popped
+                        if (didPop) {
+                          uploadTask?.cancel();
+                        }
                       },
                       child: AlertDialog(
                         content: Column(
