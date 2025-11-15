@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum CommentStatus {
   pending('На модерации'),
   approved('Одобрен'),
-  rejected('Отклонен');
+  rejected('Отклонен'),
+  reviewed('Просмотрено');
 
   final String displayName;
   const CommentStatus(this.displayName);

@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../providers/diary_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/export_service.dart';
+import '../../widgets/app_header.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -197,70 +198,39 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       body: CustomScrollView(
         slivers: [
           // App Bar
-          SliverAppBar(
-            expandedHeight: 100,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              title: InkWell(
-                onTap: _selectMonth,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Статистика',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.calendar_month,
-                      color: Colors.white70,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
-              centerTitle: false,
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          AppHeader(
+            title: 'Статистика',
+            subtitle: DateFormat('MMMM yyyy', 'ru').format(_selectedMonth),
+            expandedHeight: 140,
             actions: [
+              IconButton(
+                icon: const Icon(Icons.calendar_month, color: Colors.white),
+                onPressed: _selectMonth,
+                tooltip: 'Выбрать месяц',
+              ),
               IconButton(
                 icon: const Icon(Icons.file_download, color: Colors.white),
                 onPressed: _showExportDialog,
                 tooltip: 'Экспорт',
               ),
             ],
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.white,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              tabs: const [
-                Tab(text: 'Обзор'),
-                Tab(text: 'По дням'),
-              ],
+            bottom: Container(
+              color: Theme.of(context).colorScheme.surface,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                tabs: const [
+                  Tab(text: 'Обзор'),
+                  Tab(text: 'По дням'),
+                ],
+              ),
             ),
           ),
 

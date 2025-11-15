@@ -285,6 +285,21 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  // Mark a comment as reviewed (keeps in public but removes from moderation)
+  Future<void> reviewComment(String commentId) async {
+    try {
+      await _firestore.collection('recipe_comments').doc(commentId).update({
+        'status': CommentStatus.reviewed.name,
+      });
+
+      _pendingComments.removeWhere((c) => c.id == commentId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error reviewing comment: $e');
+      rethrow;
+    }
+  }
+
   // Delete a comment
   Future<void> deleteComment(String commentId) async {
     try {

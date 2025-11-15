@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/recipes_provider.dart';
 import '../../models/recipe.dart';
+import '../../widgets/app_header.dart';
 import 'recipe_detail_screen.dart';
 import 'add_recipe_screen.dart';
 import 'my_recipes_screen.dart';
@@ -41,36 +42,10 @@ class _RecipesScreenState extends State<RecipesScreen> {
       body: CustomScrollView(
         slivers: [
           // App Bar
-          SliverAppBar(
-            expandedHeight: 100,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                'Рецепты',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-              centerTitle: false,
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          AppHeader(
+            title: 'Рецепты',
+            subtitle: 'Вкусные и полезные рецепты',
+            expandedHeight: 120,
           ),
 
           // Search Bar

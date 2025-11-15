@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_provider.dart';
+import '../../widgets/app_header.dart';
 import 'statistics_tab.dart';
 import 'recipes_approval_tab.dart';
 import 'articles_management_tab.dart';
@@ -43,103 +44,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            title: Text(
-              'Панель',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primaryContainer,
-                      Theme.of(context).colorScheme.secondaryContainer,
-                    ],
+          AppHeader(
+            title: 'Панель администратора',
+            subtitle: 'Управление приложением',
+            expandedHeight: 140,
+            bottom: Container(
+              color: Theme.of(context).colorScheme.surface,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                indicatorWeight: 3,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.bar_chart, size: 18),
+                    text: 'Статистика',
                   ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Icon(
-                                Icons.admin_panel_settings,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                size: 32,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                'Панель администратора',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimaryContainer,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  Tab(
+                    icon: Icon(Icons.restaurant_menu, size: 18),
+                    text: 'Рецепты',
                   ),
-                ),
-              ),
-            ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
-              child: Container(
-                color: Theme.of(context).colorScheme.surface,
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: Theme.of(context).colorScheme.primary,
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: Theme.of(context).colorScheme.primary,
-                  indicatorWeight: 3,
-                  tabs: const [
-                    Tab(
-                      icon: Icon(Icons.bar_chart, size: 20),
-                      text: 'Статистика',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.restaurant_menu, size: 20),
-                      text: 'Рецепты',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.article, size: 20),
-                      text: 'Статьи',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.comment, size: 20),
-                      text: 'Комментарии',
-                    ),
-                  ],
-                ),
+                  Tab(
+                    icon: Icon(Icons.article, size: 18),
+                    text: 'Статьи',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.comment, size: 18),
+                    text: 'Комментарии',
+                  ),
+                ],
               ),
             ),
           ),
