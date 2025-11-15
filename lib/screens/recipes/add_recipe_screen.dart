@@ -150,7 +150,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
       );
-      
+
       if (image != null) {
         // Crop the image
         final croppedFile = await ImageCropper().cropImage(
@@ -161,29 +161,16 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               toolbarColor: Theme.of(context).colorScheme.primary,
               toolbarWidgetColor: Colors.white,
               activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
-              initAspectRatio: CropAspectRatioPreset.ratio16x9,
               lockAspectRatio: false,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.square,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio16x9,
-                CropAspectRatioPreset.original,
-              ],
+              hideBottomControls: true,
             ),
             IOSUiSettings(
               title: 'Обрезать фото',
-              aspectRatioPresets: [
-                CropAspectRatioPreset.square,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio16x9,
-                CropAspectRatioPreset.original,
-              ],
+              aspectRatioLockEnabled: false,
             ),
           ],
         );
-        
+
         if (croppedFile != null) {
           setState(() {
             _coverImage = File(croppedFile.path);
@@ -228,37 +215,33 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (stepImage != null) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        height: 200,
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                stepImage!,
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              ),
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              stepImage!,
+                              width: double.infinity,
+                              height: 150,
+                              fit: BoxFit.cover,
                             ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.black54,
-                                ),
-                                onPressed: () {
-                                  setDialogState(() {
-                                    stepImage = null;
-                                  });
-                                },
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black54,
                               ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  stepImage = null;
+                                });
+                              },
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -267,15 +250,33 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         try {
                           final XFile? image = await _imagePicker.pickImage(
                             source: ImageSource.gallery,
-                            maxWidth: 1024,
-                            maxHeight: 1024,
-                            imageQuality: 85,
                           );
-                          
+
                           if (image != null) {
-                            setDialogState(() {
-                              stepImage = File(image.path);
-                            });
+                            // Crop the image
+                            final croppedFile = await ImageCropper().cropImage(
+                              sourcePath: image.path,
+                              uiSettings: [
+                                AndroidUiSettings(
+                                  toolbarTitle: 'Обрезать фото',
+                                  toolbarColor: Theme.of(context).colorScheme.primary,
+                                  toolbarWidgetColor: Colors.white,
+                                  activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+                                  lockAspectRatio: false,
+                                  hideBottomControls: true,
+                                ),
+                                IOSUiSettings(
+                                  title: 'Обрезать фото',
+                                  aspectRatioLockEnabled: false,
+                                ),
+                              ],
+                            );
+
+                            if (croppedFile != null) {
+                              setDialogState(() {
+                                stepImage = File(croppedFile.path);
+                              });
+                            }
                           }
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
