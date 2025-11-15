@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/recipes_provider.dart';
 import '../../models/recipe.dart';
 import 'recipe_detail_screen.dart';
+import 'edit_recipe_screen.dart';
 
 class MyRecipesScreen extends StatefulWidget {
   const MyRecipesScreen({super.key});
@@ -289,14 +290,18 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
                             const SizedBox(width: 8),
                             FilledButton.icon(
                               onPressed: () {
-                                // TODO: Implement edit recipe
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Редактирование будет добавлено позже'),
-                                    behavior: SnackBarBehavior.floating,
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditRecipeScreen(
+                                      recipe: recipe,
+                                      isAdmin: false,
+                                    ),
                                   ),
-                                );
+                                ).then((_) {
+                                  // Reload recipes after editing
+                                  Provider.of<RecipesProvider>(context, listen: false).loadMyRecipes();
+                                });
                               },
                               icon: const Icon(Icons.edit, size: 18),
                               label: const Text('Изменить'),

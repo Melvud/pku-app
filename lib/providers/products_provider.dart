@@ -2,9 +2,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/product.dart';
 import '../services/google_sheets_service.dart';
 import '../services/multi_source_barcode_service.dart';
+import '../services/local_database_service.dart';
 
 class ProductsProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -204,20 +206,34 @@ class ProductsProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final snapshot = await _firestore
-          .collection('products')
-          .orderBy('name')
-          .get(const GetOptions(source: Source.cache));
+      // Step 1: Try to load from local SQLite cache first
+      final localDb = LocalDatabaseService();
+      final cachedProducts = await localDb.getCachedProducts();
 
-      if (snapshot.docs.isNotEmpty) {
-        _products = snapshot.docs
-            .map((doc) => Product.fromFirestore(doc))
-            .toList();
+      if (cachedProducts.isNotEmpty) {
+        _products = cachedProducts.map((map) => _productFromMap(map)).toList();
         _syncProgress = 0.3;
-        _syncStatus = 'Загружено ${_products.length} продуктов';
+        _syncStatus = 'Загружено ${_products.length} продуктов из кэша';
+        debugPrint('✅ Loaded ${_products.length} products from local cache');
         notifyListeners();
+      } else {
+        // Fallback to Firestore cache if local cache is empty
+        final snapshot = await _firestore
+            .collection('products')
+            .orderBy('name')
+            .get(const GetOptions(source: Source.cache));
+
+        if (snapshot.docs.isNotEmpty) {
+          _products = snapshot.docs
+              .map((doc) => Product.fromFirestore(doc))
+              .toList();
+          _syncProgress = 0.3;
+          _syncStatus = 'Загружено ${_products.length} продуктов';
+          notifyListeners();
+        }
       }
 
+      // Step 2: Check if we need to sync
       if (_products.isEmpty || _shouldSync() || forceSync) {
         await syncFromGoogleSheets();
       } else {
@@ -227,7 +243,7 @@ class ProductsProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Ошибка загрузки продуктов: $e';
       debugPrint(_error);
-      
+
       try {
         final snapshot = await _firestore
             .collection('products')
@@ -246,6 +262,25 @@ class ProductsProvider with ChangeNotifier {
       _syncStatus = '';
       notifyListeners();
     }
+  }
+
+  Product _productFromMap(Map<String, dynamic> map) {
+    return Product(
+      id: map['id'],
+      name: map['name'],
+      category: map['category'] ?? 'other',
+      proteinPer100g: (map['proteinPer100g'] ?? 0).toDouble(),
+      pheMeasuredPer100g: map['pheMeasuredPer100g']?.toDouble(),
+      pheEstimatedPer100g: (map['phePer100g'] ?? 0).toDouble(),
+      fatPer100g: (map['fatPer100g'] ?? 0).toDouble(),
+      carbsPer100g: (map['carbsPer100g'] ?? 0).toDouble(),
+      caloriesPer100g: (map['caloriesPer100g'] ?? 0).toDouble(),
+      source: map['source'] ?? 'Google Sheets',
+      notes: map['notes'],
+      barcode: map['barcode'],
+      googleSheetsId: map['googleSheetsId'],
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] ?? DateTime.now().millisecondsSinceEpoch),
+    );
   }
 
   bool _shouldSync() {
@@ -393,11 +428,34 @@ class ProductsProvider with ChangeNotifier {
           .map((doc) => Product.fromFirestore(doc))
           .toList();
 
+      // Save to local SQLite cache
+      final localDb = LocalDatabaseService();
+      final productsForCache = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'],
+          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
+          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
+          'fatPer100g': data['fatPer100g'] ?? 0.0,
+          'carbsPer100g': data['carbsPer100g'] ?? 0.0,
+          'caloriesPer100g': data['caloriesPer100g'] ?? 0.0,
+          'category': data['category'] ?? 'other',
+          'source': data['source'],
+          'barcode': data['barcode'],
+          'googleSheetsId': data['googleSheetsId'],
+          'notes': data['notes'],
+        };
+      }).toList();
+
+      await localDb.cacheProducts(productsForCache);
+      debugPrint('✅ Cached ${productsForCache.length} products to local storage');
+
       _syncProgress = 1.0;
       _syncStatus = 'Синхронизация завершена';
-      
+
       debugPrint('✅ Sync completed: added $addedCount, updated $updatedCount products');
-      
+
       await Future.delayed(const Duration(milliseconds: 500));
       
     } catch (e) {
@@ -413,8 +471,45 @@ class ProductsProvider with ChangeNotifier {
 
   Future<void> addProduct(Product product) async {
     try {
-      await _firestore.collection('products').add(product.toFirestore());
-      await loadProducts();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Add user-specific metadata
+      final productData = product.toFirestore();
+      productData['createdBy'] = currentUser.uid;
+      productData['isUserCreated'] = true;
+      productData['createdAt'] = FieldValue.serverTimestamp();
+
+      // Save to Firebase
+      final docRef = await _firestore.collection('products').add(productData);
+
+      // Save to local cache immediately
+      final localDb = LocalDatabaseService();
+      final productForCache = {
+        'id': docRef.id,
+        'name': product.name,
+        'phePer100g': product.pheToUse,
+        'proteinPer100g': product.proteinPer100g,
+        'fatPer100g': product.fatPer100g ?? 0.0,
+        'carbsPer100g': product.carbsPer100g ?? 0.0,
+        'caloriesPer100g': product.caloriesPer100g ?? 0.0,
+        'category': product.category,
+        'source': product.source,
+        'barcode': product.barcode,
+        'notes': product.notes,
+      };
+
+      await localDb.cacheProducts([productForCache]);
+
+      // Add to local products list
+      final newProduct = product.copyWith(id: docRef.id);
+      _products.add(newProduct);
+      _products.sort((a, b) => a.name.compareTo(b.name));
+
+      notifyListeners();
+      debugPrint('✅ User product added: ${product.name}');
     } catch (e) {
       _error = 'Ошибка добавления продукта: $e';
       debugPrint(_error);

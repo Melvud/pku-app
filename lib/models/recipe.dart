@@ -111,6 +111,63 @@ class Recipe {
     return instructions.map((i) => RecipeStep(instruction: i)).toList();
   }
 
+  // Copy with method for updating specific fields
+  Recipe copyWith({
+    String? id,
+    String? name,
+    String? description,
+    RecipeCategory? category,
+    List<RecipeIngredient>? ingredients,
+    List<String>? instructions,
+    List<RecipeStep>? steps,
+    int? servings,
+    int? cookingTimeMinutes,
+    double? phePer100g,
+    double? proteinPer100g,
+    double? fatPer100g,
+    double? carbsPer100g,
+    double? caloriesPer100g,
+    String? imageUrl,
+    String? authorId,
+    String? authorName,
+    RecipeStatus? status,
+    DateTime? createdAt,
+    DateTime? approvedAt,
+    String? rejectionReason,
+    bool? isOfficial,
+    bool? isRecommended,
+    int? likesCount,
+    List<String>? likedBy,
+  }) {
+    return Recipe(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      ingredients: ingredients ?? this.ingredients,
+      instructions: instructions ?? this.instructions,
+      steps: steps ?? this.steps,
+      servings: servings ?? this.servings,
+      cookingTimeMinutes: cookingTimeMinutes ?? this.cookingTimeMinutes,
+      phePer100g: phePer100g ?? this.phePer100g,
+      proteinPer100g: proteinPer100g ?? this.proteinPer100g,
+      fatPer100g: fatPer100g ?? this.fatPer100g,
+      carbsPer100g: carbsPer100g ?? this.carbsPer100g,
+      caloriesPer100g: caloriesPer100g ?? this.caloriesPer100g,
+      imageUrl: imageUrl ?? this.imageUrl,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      approvedAt: approvedAt ?? this.approvedAt,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      isOfficial: isOfficial ?? this.isOfficial,
+      isRecommended: isRecommended ?? this.isRecommended,
+      likesCount: likesCount ?? this.likesCount,
+      likedBy: likedBy ?? this.likedBy,
+    );
+  }
+
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,

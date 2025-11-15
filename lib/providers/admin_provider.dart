@@ -135,10 +135,13 @@ class AdminProvider with ChangeNotifier {
   Future<void> addAdminRecipe(Recipe recipe) async {
     try {
       await _firestore.collection('recipes').add(recipe.toFirestore());
-      
+
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
-      
+
+      // Reload recommended recipes to show the new one
+      await loadRecommendedRecipes();
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error adding admin recipe: $e');
@@ -170,18 +173,47 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  // Update a recipe (admin/recommended recipes)
+  Future<void> updateRecipe(Recipe recipe) async {
+    try {
+      await _firestore
+          .collection('recipes')
+          .doc(recipe.id)
+          .update(recipe.toFirestore());
+
+      // Update in recommended recipes list if it's a recommended recipe
+      if (recipe.isRecommended) {
+        final index = _recommendedRecipes.indexWhere((r) => r.id == recipe.id);
+        if (index != -1) {
+          _recommendedRecipes[index] = recipe;
+        } else {
+          // If not in list, reload the list
+          await loadRecommendedRecipes();
+        }
+      }
+
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating recipe: $e');
+      rethrow;
+    }
+  }
+
   // Delete a recipe
   Future<void> deleteRecipe(String recipeId) async {
     try {
       await _firestore.collection('recipes').doc(recipeId).delete();
-      
+
       // Remove from local lists
       _pendingRecipes.removeWhere((r) => r.id == recipeId);
       _recommendedRecipes.removeWhere((r) => r.id == recipeId);
-      
+
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting recipe: $e');

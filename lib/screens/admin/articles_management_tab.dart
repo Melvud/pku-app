@@ -453,6 +453,7 @@ class _ArticleCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 56,
@@ -477,6 +478,8 @@ class _ArticleCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     if (article.description != null) ...[
@@ -491,45 +494,65 @@ class _ArticleCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                     ],
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
                       children: [
-                        Icon(
-                          Icons.person,
-                          size: 14,
-                          color: Colors.grey.shade600,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.person,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                article.createdByName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          article.createdByName,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(
-                          Icons.calendar_today,
-                          size: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          DateFormat('dd.MM.yyyy').format(article.createdAt),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              DateFormat('dd.MM.yyyy').format(article.createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline),
                 color: Colors.red,
                 tooltip: 'Удалить статью',
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+                padding: const EdgeInsets.all(8),
               ),
             ],
           ),
