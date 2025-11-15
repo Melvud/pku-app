@@ -228,17 +228,17 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (stepImage != null) ...[
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 400,
-                          maxHeight: 200,
-                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 200,
                         child: Stack(
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.file(
                                 stepImage!,
+                                width: double.infinity,
+                                height: 200,
                                 fit: BoxFit.cover,
                               ),
                             ),
