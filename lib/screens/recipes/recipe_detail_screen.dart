@@ -171,6 +171,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       children: [
                         Image.network(
                           widget.recipe.imageUrl!,
+                          width: double.infinity,
+                          height: 200,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return _buildDefaultCover(color);
@@ -1019,16 +1021,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 panEnabled: true,
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                      child: Icon(
-                        Icons.error_outline,
-                        color: Colors.white,
-                        size: 48,
-                      ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Image.network(
+                      imageUrl,
+                      width: MediaQuery.of(context).size.width,
+                      height: MediaQuery.of(context).size.height,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            color: Colors.white,
+                            size: 48,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
