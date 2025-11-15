@@ -396,27 +396,30 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
                                   InkWell(
-                                    onTap: _toggleLike,
+                                    onTap: widget.recipe.status == RecipeStatus.rejected ? null : _toggleLike,
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            isLiked ? Icons.favorite : Icons.favorite_border,
-                                            color: isLiked ? Colors.red : Colors.grey.shade600,
-                                            size: 22,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            '${currentRecipe.likesCount}',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey.shade800,
+                                    child: Opacity(
+                                      opacity: widget.recipe.status == RecipeStatus.rejected ? 0.5 : 1.0,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              isLiked ? Icons.favorite : Icons.favorite_border,
+                                              color: isLiked ? Colors.red : Colors.grey.shade600,
+                                              size: 22,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '${currentRecipe.likesCount}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey.shade800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -425,25 +428,28 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     width: 1,
                                     color: Colors.grey.shade300,
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.comment_outlined,
-                                          color: Colors.grey.shade600,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          '${_comments.length}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade800,
+                                  Opacity(
+                                    opacity: widget.recipe.status == RecipeStatus.rejected ? 0.5 : 1.0,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.comment_outlined,
+                                            color: Colors.grey.shade600,
+                                            size: 20,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${_comments.length}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -690,75 +696,108 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Add comment field
-                  Card(
-                    elevation: 0,
-                    color: Colors.grey.shade50,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_replyingToCommentId != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.reply, size: 16, color: color),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Ответ для $_replyingToAuthorName',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: color,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: 18),
-                                    onPressed: () {
-                                      setState(() {
-                                        _replyingToCommentId = null;
-                                        _replyingToAuthorName = null;
-                                      });
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
+                  // Show notice if recipe is rejected
+                  if (widget.recipe.status == RecipeStatus.rejected) ...[
+                    Card(
+                      elevation: 0,
+                      color: Colors.red.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.red.shade700),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Этот рецепт отклонен. Лайки и комментарии отключены.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 8),
                           ],
-                          TextField(
-                            controller: _commentController,
-                            maxLines: 2,
-                            decoration: InputDecoration(
-                              hintText: 'Написать комментарий...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.all(12),
-                              suffixIcon: IconButton(
-                                onPressed: _addComment,
-                                icon: Icon(Icons.send, color: color),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Add comment field - only show if recipe is not rejected
+                  if (widget.recipe.status != RecipeStatus.rejected) ...[
+                    Card(
+                      elevation: 0,
+                      color: Colors.grey.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_replyingToCommentId != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.reply, size: 16, color: color),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Ответ для $_replyingToAuthorName',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: color,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () {
+                                        setState(() {
+                                          _replyingToCommentId = null;
+                                          _replyingToAuthorName = null;
+                                        });
+                                      },
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            TextField(
+                              controller: _commentController,
+                              maxLines: 2,
+                              decoration: InputDecoration(
+                                hintText: 'Написать комментарий...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.all(12),
+                                suffixIcon: IconButton(
+                                  onPressed: _addComment,
+                                  icon: Icon(Icons.send, color: color),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Comments list
                   if (_isLoadingComments)

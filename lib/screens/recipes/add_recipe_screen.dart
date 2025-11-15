@@ -228,33 +228,37 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (stepImage != null) ...[
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              stepImage!,
-                              width: double.infinity,
-                              height: 150,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.black54,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: 400,
+                          maxHeight: 200,
+                        ),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                stepImage!,
+                                fit: BoxFit.cover,
                               ),
-                              onPressed: () {
-                                setDialogState(() {
-                                  stepImage = null;
-                                });
-                              },
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black54,
+                                ),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    stepImage = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ],

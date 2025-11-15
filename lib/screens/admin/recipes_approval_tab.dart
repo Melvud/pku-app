@@ -73,6 +73,7 @@ class RecipesApprovalTab extends StatelessWidget {
                 recipe: recipe,
                 onApprove: () => _approveRecipe(context, recipe),
                 onReject: () => _rejectRecipe(context, recipe),
+                onDelete: () => _deleteRecipe(context, recipe),
               );
             },
           ),
@@ -211,17 +212,71 @@ class RecipesApprovalTab extends StatelessWidget {
 
     reasonController.dispose();
   }
+
+  Future<void> _deleteRecipe(BuildContext context, Recipe recipe) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить рецепт?'),
+        content: Text(
+          'Рецепт "${recipe.name}" будет удален безвозвратно.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        await Provider.of<AdminProvider>(context, listen: false)
+            .deleteRecipe(recipe.id);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Рецепт "${recipe.name}" удален'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
 }
 
 class _RecipeCard extends StatelessWidget {
   final Recipe recipe;
   final VoidCallback onApprove;
   final VoidCallback onReject;
+  final VoidCallback onDelete;
 
   const _RecipeCard({
     required this.recipe,
     required this.onApprove,
     required this.onReject,
+    required this.onDelete,
   });
 
   @override
@@ -583,56 +638,47 @@ class _RecipeCard extends StatelessWidget {
           // Action buttons
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: onReject,
-                        icon: const Icon(Icons.close),
-                        label: const Text('Отклонить'),
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Отклонить', style: TextStyle(fontSize: 13)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: onApprove,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Одобрить'),
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Одобрить', style: TextStyle(fontSize: 13)),
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Implement edit recipe before approval
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Редактирование перед одобрением будет добавлено позже'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Изменить перед одобрением'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete, size: 16),
+                  label: const Text('Удалить рецепт', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: BorderSide(color: Colors.red.shade300),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ],

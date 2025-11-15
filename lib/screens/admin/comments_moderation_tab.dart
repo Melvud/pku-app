@@ -33,20 +33,20 @@ class CommentsModerationTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.comment_outlined,
+                  Icons.check_circle_outline,
                   size: 80,
-                  color: Colors.grey.shade300,
+                  color: Colors.green.shade300,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Нет комментариев',
+                  'Нет комментариев на модерации',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Комментарии появятся здесь',
+                  'Все комментарии обработаны',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey.shade600,
@@ -387,13 +387,7 @@ class _CommentCardState extends State<_CommentCard> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: widget.comment.status == CommentStatus.approved
-                  ? Colors.green.shade50
-                  : widget.comment.status == CommentStatus.pending
-                      ? Colors.amber.shade50
-                      : widget.comment.status == CommentStatus.reviewed
-                          ? Colors.blue.shade50
-                          : Colors.red.shade50,
+              color: Colors.amber.shade50,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
@@ -431,27 +425,15 @@ class _CommentCardState extends State<_CommentCard> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: widget.comment.status == CommentStatus.approved
-                        ? Colors.green.shade100
-                        : widget.comment.status == CommentStatus.pending
-                            ? Colors.amber.shade100
-                            : widget.comment.status == CommentStatus.reviewed
-                                ? Colors.blue.shade100
-                                : Colors.red.shade100,
+                    color: Colors.amber.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.comment.status.displayName,
+                    'На модерации',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: widget.comment.status == CommentStatus.approved
-                          ? Colors.green.shade800
-                          : widget.comment.status == CommentStatus.pending
-                              ? Colors.amber.shade800
-                              : widget.comment.status == CommentStatus.reviewed
-                                  ? Colors.blue.shade800
-                                  : Colors.red.shade800,
+                      color: Colors.amber.shade800,
                     ),
                   ),
                 ),
@@ -505,62 +487,47 @@ class _CommentCardState extends State<_CommentCard> {
             ),
           ),
 
-          // Action buttons
+          // Action buttons - only show for pending comments
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Row(
               children: [
-                if (widget.comment.status == CommentStatus.pending) ...[
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: widget.onReject,
-                      icon: const Icon(Icons.close, size: 16),
-                      label: const Text('Отклонить', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: widget.onReject,
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: widget.onReview,
-                      icon: const Icon(Icons.visibility, size: 16),
-                      label: const Text('Просмотрено', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: widget.onReview,
+                    icon: const Icon(Icons.visibility, size: 16),
+                    label: const Text('Просмотрено', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: widget.onApprove,
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Одобрить', style: TextStyle(fontSize: 12)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: widget.onApprove,
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Одобрить', style: TextStyle(fontSize: 12)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
-                ],
-                if (widget.comment.status != CommentStatus.pending) ...[
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: widget.onDelete,
-                      icon: const Icon(Icons.delete, size: 16),
-                      label: const Text('Удалить', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),

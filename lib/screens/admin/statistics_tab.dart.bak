@@ -196,144 +196,19 @@ class StatisticsTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'На проверке',
-                        value: stats['pendingRecipes']?.toString() ?? '0',
-                        icon: Icons.pending_actions,
-                        color: Colors.amber,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.amber.shade400, Colors.amber.shade700],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Отклонено',
-                        value: stats['rejectedRecipes']?.toString() ?? '0',
-                        icon: Icons.cancel,
-                        color: Colors.red,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.red.shade400, Colors.red.shade700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Рекомендовано',
-                        value: stats['recommendedRecipes']?.toString() ?? '0',
-                        icon: Icons.star,
-                        color: Colors.indigo,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.indigo.shade400, Colors.indigo.shade700],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Всего лайков',
-                        value: stats['totalLikes']?.toString() ?? '0',
-                        icon: Icons.favorite,
-                        color: Colors.pink,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.pink.shade400, Colors.pink.shade700],
-                        ),
-                      ),
-                    ),
-                  ],
+                _StatCard(
+                  title: 'На проверке',
+                  value: stats['pendingRecipes']?.toString() ?? '0',
+                  icon: Icons.pending_actions,
+                  color: Colors.amber,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.amber.shade400, Colors.amber.shade700],
+                  ),
+                  fullWidth: true,
                 ),
                 const SizedBox(height: 24),
-
-                // Content stats
-                Text(
-                  'Контент',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Статьи',
-                        value: stats['totalArticles']?.toString() ?? '0',
-                        icon: Icons.article,
-                        color: Colors.deepPurple,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Всего комментариев',
-                        value: stats['totalComments']?.toString() ?? '0',
-                        icon: Icons.comment,
-                        color: Colors.cyan,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.cyan.shade400, Colors.cyan.shade700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Одобрено',
-                        value: stats['approvedComments']?.toString() ?? '0',
-                        icon: Icons.check_circle_outline,
-                        color: Colors.lightGreen,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.lightGreen.shade400, Colors.lightGreen.shade700],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        title: 'На модерации',
-                        value: stats['pendingComments']?.toString() ?? '0',
-                        icon: Icons.pending,
-                        color: Colors.deepOrange,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Colors.deepOrange.shade400, Colors.deepOrange.shade700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
 
                 // Activity stats
                 Text(

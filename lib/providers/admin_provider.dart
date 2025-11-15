@@ -324,7 +324,7 @@ class AdminProvider with ChangeNotifier {
       final usersSnapshot = await _firestore.collection('users').get();
       final totalUsers = usersSnapshot.docs.length;
 
-      // Get total recipes
+      // Get total recipes with breakdown
       final recipesSnapshot = await _firestore.collection('recipes').get();
       final totalRecipes = recipesSnapshot.docs.length;
       final approvedRecipes = recipesSnapshot.docs
@@ -332,6 +332,26 @@ class AdminProvider with ChangeNotifier {
           .length;
       final pendingRecipes = recipesSnapshot.docs
           .where((doc) => doc.data()['status'] == RecipeStatus.pending.name)
+          .length;
+      final rejectedRecipes = recipesSnapshot.docs
+          .where((doc) => doc.data()['status'] == RecipeStatus.rejected.name)
+          .length;
+      final recommendedRecipes = recipesSnapshot.docs
+          .where((doc) => doc.data()['isRecommended'] == true)
+          .length;
+
+      // Get total articles
+      final articlesSnapshot = await _firestore.collection('articles').get();
+      final totalArticles = articlesSnapshot.docs.length;
+
+      // Get total comments with breakdown
+      final commentsSnapshot = await _firestore.collection('recipe_comments').get();
+      final totalComments = commentsSnapshot.docs.length;
+      final pendingComments = commentsSnapshot.docs
+          .where((doc) => doc.data()['status'] == CommentStatus.pending.name)
+          .length;
+      final approvedComments = commentsSnapshot.docs
+          .where((doc) => doc.data()['status'] == CommentStatus.approved.name)
           .length;
 
       // Get total diary entries (last 30 days)
@@ -355,11 +375,24 @@ class AdminProvider with ChangeNotifier {
       }
       final activeUsers = activeUserIds.length;
 
+      // Calculate total likes across all recipes
+      int totalLikes = 0;
+      for (var doc in recipesSnapshot.docs) {
+        totalLikes += (doc.data()['likesCount'] ?? 0) as int;
+      }
+
       _appStats = {
         'totalUsers': totalUsers,
         'totalRecipes': totalRecipes,
         'approvedRecipes': approvedRecipes,
         'pendingRecipes': pendingRecipes,
+        'rejectedRecipes': rejectedRecipes,
+        'recommendedRecipes': recommendedRecipes,
+        'totalArticles': totalArticles,
+        'totalComments': totalComments,
+        'pendingComments': pendingComments,
+        'approvedComments': approvedComments,
+        'totalLikes': totalLikes,
         'recentEntries': recentEntries,
         'activeUsers': activeUsers,
       };
@@ -378,9 +411,10 @@ class AdminProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Load all comments (not just pending) since comments are now approved by default
+      // Load only pending comments for moderation
       final snapshot = await _firestore
           .collection('recipe_comments')
+          .where('status', isEqualTo: CommentStatus.pending.name)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -388,10 +422,8 @@ class AdminProvider with ChangeNotifier {
           .map((doc) => RecipeComment.fromFirestore(doc))
           .toList();
       
-      // Also keep pending list for backward compatibility
-      _pendingComments = _allComments
-          .where((c) => c.status == CommentStatus.pending)
-          .toList();
+      // Keep pending list for backward compatibility
+      _pendingComments = _allComments;
     } catch (e) {
       debugPrint('Error loading comments: $e');
       _pendingComments = [];
@@ -410,6 +442,7 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingComments.removeWhere((c) => c.id == commentId);
+      _allComments.removeWhere((c) => c.id == commentId);
       notifyListeners();
     } catch (e) {
       debugPrint('Error approving comment: $e');
@@ -425,6 +458,7 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingComments.removeWhere((c) => c.id == commentId);
+      _allComments.removeWhere((c) => c.id == commentId);
       notifyListeners();
     } catch (e) {
       debugPrint('Error rejecting comment: $e');
@@ -440,6 +474,7 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingComments.removeWhere((c) => c.id == commentId);
+      _allComments.removeWhere((c) => c.id == commentId);
       notifyListeners();
     } catch (e) {
       debugPrint('Error reviewing comment: $e');
@@ -453,6 +488,7 @@ class AdminProvider with ChangeNotifier {
       await _firestore.collection('recipe_comments').doc(commentId).delete();
 
       _pendingComments.removeWhere((c) => c.id == commentId);
+      _allComments.removeWhere((c) => c.id == commentId);
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting comment: $e');
