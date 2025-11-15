@@ -584,28 +584,53 @@ class _RecipeCard extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onReject,
-                    icon: const Icon(Icons.close),
-                    label: const Text('Отклонить'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onReject,
+                        icon: const Icon(Icons.close),
+                        label: const Text('Отклонить'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: onApprove,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Одобрить'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onApprove,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Одобрить'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green,
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // TODO: Implement edit recipe before approval
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Редактирование перед одобрением будет добавлено позже'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('Изменить перед одобрением'),
+                    style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),

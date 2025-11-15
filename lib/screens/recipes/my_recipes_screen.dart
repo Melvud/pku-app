@@ -217,6 +217,92 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
                             ),
                           ),
                         ],
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 8),
+                        // Action buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Удалить рецепт?'),
+                                    content: Text(
+                                      'Рецепт "${recipe.name}" будет удален безвозвратно.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Отмена'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        child: const Text('Удалить'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true && context.mounted) {
+                                  try {
+                                    await provider.deleteRecipe(recipe.id);
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Рецепт "${recipe.name}" удален'),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text('Ошибка: $e'),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.delete, size: 18),
+                              label: const Text('Удалить'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              onPressed: () {
+                                // TODO: Implement edit recipe
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Редактирование будет добавлено позже'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Изменить'),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
