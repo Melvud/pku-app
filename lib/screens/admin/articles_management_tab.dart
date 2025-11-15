@@ -116,7 +116,6 @@ class ArticlesManagementTab extends StatelessWidget {
     final descriptionController = TextEditingController();
     File? selectedFile;
     String? fileName;
-    UploadTask? uploadTask;
 
     await showDialog(
       context: context,
@@ -232,53 +231,48 @@ class ArticlesManagementTab extends StatelessWidget {
                   return;
                 }
 
-                Navigator.pop(context);
+                // Сохраняем BuildContext перед async операциями
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                final adminProvider = Provider.of<AdminProvider>(context, listen: false);
+                
+                navigator.pop();
 
-                // Show uploading dialog with progress
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (dialogContext) => StatefulBuilder(
-                    builder: (context, setDialogState) => PopScope(
-                      canPop: true,
-                      onPopInvoked: (didPop) {
-                        // Cancel upload if dialog is popped
-                        if (didPop) {
-                          uploadTask?.cancel();
-                        }
-                      },
-                      child: AlertDialog(
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 16),
-                            const Text('Загрузка файла...'),
-                            if (uploadTask != null)
-                              StreamBuilder<TaskSnapshot>(
-                                stream: uploadTask!.snapshotEvents,
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    final progress = snapshot.data!.bytesTransferred /
-                                        snapshot.data!.totalBytes;
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Column(
-                                        children: [
-                                          LinearProgressIndicator(value: progress),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${(progress * 100).toStringAsFixed(0)}%',
-                                            style: const TextStyle(fontSize: 12),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
+                // Показываем диалог загрузки
+                UploadTask? uploadTask;
+                
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (dialogContext) => PopScope(
+                      canPop: false,
+                      child: Scaffold(
+                        backgroundColor: Colors.black54,
+                        body: Center(
+                          child: Card(
+                            margin: const EdgeInsets.all(32),
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'Загрузка файла...',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Не закрывайте это окно',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                          ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -293,10 +287,10 @@ class ArticlesManagementTab extends StatelessWidget {
                       .child('${DateTime.now().millisecondsSinceEpoch}.pdf');
                   
                   // Create and track the upload task
-                  uploadTask = storageRef.putFile(selectedFile!);
+                  uploadTask = storageRef.putFile(selectedFile);
                   
                   // Wait for upload to complete
-                  final snapshot = await uploadTask!;
+                  final snapshot = await uploadTask;
                   
                   // Get download URL only after successful upload
                   final pdfUrl = await snapshot.ref.getDownloadURL();
@@ -315,54 +309,57 @@ class ArticlesManagementTab extends StatelessWidget {
                     createdByName: currentUser?.email ?? 'Админ',
                   );
 
-                  await Provider.of<AdminProvider>(context, listen: false)
-                      .addArticle(article);
+                  await adminProvider.addArticle(article);
 
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close uploading dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Статья успешно добавлена'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+                  // Закрываем диалог загрузки
+                  navigator.pop();
+                  
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Статья успешно добавлена'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 } on FirebaseException catch (e) {
                   debugPrint('Firebase error uploading PDF: ${e.code} - ${e.message}');
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close uploading dialog
-                    String errorMessage = 'Ошибка загрузки файла';
-                    if (e.code == 'canceled') {
-                      errorMessage = 'Загрузка отменена';
-                    } else if (e.code == 'unauthorized') {
-                      errorMessage = 'Нет прав для загрузки файла';
-                    } else if (e.code == 'unknown') {
-                      errorMessage = 'Проверьте подключение к интернету';
-                    } else if (e.message != null) {
-                      errorMessage = 'Ошибка: ${e.message}';
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(errorMessage),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 4),
-                      ),
-                    );
+                  
+                  // Безопасно закрываем диалог
+                  navigator.pop();
+                  
+                  String errorMessage = 'Ошибка загрузки файла';
+                  if (e.code == 'canceled') {
+                    errorMessage = 'Загрузка отменена';
+                  } else if (e.code == 'unauthorized') {
+                    errorMessage = 'Нет прав для загрузки файла. Проверьте настройки Firebase Storage.';
+                  } else if (e.code == 'unknown') {
+                    errorMessage = 'Проверьте подключение к интернету';
+                  } else if (e.message != null) {
+                    errorMessage = 'Ошибка: ${e.message}';
                   }
+                  
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text(errorMessage),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
                 } catch (e) {
                   debugPrint('Error uploading PDF: $e');
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close uploading dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Ошибка: $e'),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+                  
+                  // Безопасно закрываем диалог
+                  navigator.pop();
+                  
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Непредвиденная ошибка: $e'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
                 } finally {
                   // Clear the upload task reference
                   uploadTask = null;
@@ -417,7 +414,7 @@ class ArticlesManagementTab extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ошибка: $e'),
+              content: Text('Ошибка удаления: $e'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
