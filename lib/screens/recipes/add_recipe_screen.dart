@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipes_provider.dart';
@@ -31,6 +32,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   RecipeCategory _selectedCategory = RecipeCategory.snack;
   List<RecipeIngredient> _ingredients = [];
   List<RecipeStep> _steps = [];
+  Map<int, File> _stepImages = {}; // Map to store step images by index
   bool _isSubmitting = false;
   File? _coverImage;
   final ImagePicker _imagePicker = ImagePicker();
@@ -75,7 +77,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 2,
+                      flex: 3,
                       child: TextField(
                         controller: amountController,
                         decoration: const InputDecoration(
@@ -90,15 +92,18 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
+                      flex: 2,
                       child: DropdownButtonFormField<String>(
                         value: selectedUnit,
                         decoration: const InputDecoration(
                           labelText: 'Ед.',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
+                        isExpanded: true,
                         items: ['г', 'мл', 'шт', 'ч.л.', 'ст.л.', 'стакан']
                             .map((unit) => DropdownMenuItem(
                                   value: unit,
-                                  child: Text(unit),
+                                  child: Text(unit, overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
                         onChanged: (value) {
@@ -144,15 +149,46 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
       );
       
       if (image != null) {
-        setState(() {
-          _coverImage = File(image.path);
-        });
+        // Crop the image
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Обрезать фото',
+              toolbarColor: Theme.of(context).colorScheme.primary,
+              toolbarWidgetColor: Colors.white,
+              activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.original,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Обрезать фото',
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.original,
+              ],
+            ),
+          ],
+        );
+        
+        if (croppedFile != null) {
+          setState(() {
+            _coverImage = File(croppedFile.path);
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -273,6 +309,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     );
 
     if (result == true && controller.text.isNotEmpty) {
+      final stepIndex = _steps.length;
       setState(() {
         _steps.add(RecipeStep(
           instruction: controller.text,
@@ -280,8 +317,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         ));
         // Store the image temporarily - we'll upload it when submitting
         if (stepImage != null) {
-          // For now, we'll upload images during submission
-          // Store a reference to know which step has an image
+          _stepImages[stepIndex] = stepImage!;
         }
       });
     }
@@ -332,8 +368,28 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         coverImageUrl = await coverRef.getDownloadURL();
       }
 
+      // Upload step images and update steps
+      final List<RecipeStep> stepsWithImages = [];
+      for (int i = 0; i < _steps.length; i++) {
+        String? stepImageUrl;
+        if (_stepImages.containsKey(i)) {
+          final stepImageRef = FirebaseStorage.instance
+              .ref()
+              .child('recipes')
+              .child('steps')
+              .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
+          await stepImageRef.putFile(_stepImages[i]!);
+          stepImageUrl = await stepImageRef.getDownloadURL();
+        }
+        
+        stepsWithImages.add(RecipeStep(
+          instruction: _steps[i].instruction,
+          imageUrl: stepImageUrl,
+        ));
+      }
+
       // Create backward-compatible instructions list
-      final instructionsList = _steps.map((s) => s.instruction).toList();
+      final instructionsList = stepsWithImages.map((s) => s.instruction).toList();
 
       final recipe = Recipe(
         id: '',
@@ -342,7 +398,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         category: _selectedCategory,
         ingredients: _ingredients,
         instructions: instructionsList, // Keep for backward compatibility
-        steps: _steps,
+        steps: stepsWithImages,
         servings: int.parse(_servingsController.text),
         cookingTimeMinutes: int.parse(_cookingTimeController.text),
         phePer100g: double.parse(_pheController.text),
@@ -812,6 +868,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               else
                 ...List.generate(_steps.length, (index) {
                   final step = _steps[index];
+                  final hasImage = _stepImages.containsKey(index);
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
@@ -819,9 +876,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         child: Text('${index + 1}'),
                       ),
                       title: Text(step.instruction),
-                      subtitle: step.imageUrl != null
-                          ? Row(
-                              children: const [
+                      subtitle: hasImage
+                          ? const Row(
+                              children: [
                                 Icon(Icons.image, size: 14, color: Colors.green),
                                 SizedBox(width: 4),
                                 Text('Фото добавлено', style: TextStyle(fontSize: 12)),
@@ -831,7 +888,19 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
-                          setState(() => _steps.removeAt(index));
+                          setState(() {
+                            _steps.removeAt(index);
+                            // Remove image if it exists and re-index remaining images
+                            final updatedImages = <int, File>{};
+                            _stepImages.forEach((i, file) {
+                              if (i < index) {
+                                updatedImages[i] = file;
+                              } else if (i > index) {
+                                updatedImages[i - 1] = file;
+                              }
+                            });
+                            _stepImages = updatedImages;
+                          });
                         },
                       ),
                     ),

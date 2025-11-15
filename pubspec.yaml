@@ -60,6 +60,7 @@ dependencies:
   
   # Image Picker for recipe photos
   image_picker: ^1.1.2
+  image_cropper: ^8.0.2
 
 dev_dependencies:
   flutter_test:
