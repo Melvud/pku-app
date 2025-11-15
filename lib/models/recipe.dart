@@ -70,6 +70,7 @@ class Recipe {
   final DateTime? approvedAt;
   final String? rejectionReason;
   final bool isOfficial; // Официальный рецепт от команды приложения
+  final bool isRecommended; // Рекомендованный рецепт (из админ панели)
   final int likesCount; // Number of likes
   final List<String> likedBy; // User IDs who liked this recipe
 
@@ -96,6 +97,7 @@ class Recipe {
     this.approvedAt,
     this.rejectionReason,
     this.isOfficial = false,
+    this.isRecommended = false,
     this.likesCount = 0,
     this.likedBy = const [],
   });
@@ -132,6 +134,7 @@ class Recipe {
       'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
       'rejectionReason': rejectionReason,
       'isOfficial': isOfficial,
+      'isRecommended': isRecommended,
       'likesCount': likesCount,
       'likedBy': likedBy,
     };
@@ -173,6 +176,7 @@ class Recipe {
       approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
       rejectionReason: data['rejectionReason'],
       isOfficial: data['isOfficial'] ?? false,
+      isRecommended: data['isRecommended'] ?? false,
       likesCount: data['likesCount'] ?? 0,
       likedBy: (data['likedBy'] as List<dynamic>?)?.cast<String>() ?? [],
     );
