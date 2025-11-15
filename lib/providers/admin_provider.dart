@@ -131,6 +131,64 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  // Add an admin recipe (auto-approved with recommended badge)
+  Future<void> addAdminRecipe(Recipe recipe) async {
+    try {
+      await _firestore.collection('recipes').add(recipe.toFirestore());
+      
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error adding admin recipe: $e');
+      rethrow;
+    }
+  }
+
+  // Load recommended recipes (admin recipes)
+  List<Recipe> _recommendedRecipes = [];
+  List<Recipe> get recommendedRecipes => _recommendedRecipes;
+
+  Future<void> loadRecommendedRecipes() async {
+    try {
+      final snapshot = await _firestore
+          .collection('recipes')
+          .where('isRecommended', isEqualTo: true)
+          .where('status', isEqualTo: RecipeStatus.approved.name)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      _recommendedRecipes = snapshot.docs
+          .map((doc) => Recipe.fromFirestore(doc))
+          .toList();
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading recommended recipes: $e');
+      _recommendedRecipes = [];
+    }
+  }
+
+  // Delete a recipe
+  Future<void> deleteRecipe(String recipeId) async {
+    try {
+      await _firestore.collection('recipes').doc(recipeId).delete();
+      
+      // Remove from local lists
+      _pendingRecipes.removeWhere((r) => r.id == recipeId);
+      _recommendedRecipes.removeWhere((r) => r.id == recipeId);
+      
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting recipe: $e');
+      rethrow;
+    }
+  }
+
   // Load all articles with caching
   Future<void> loadArticles() async {
     _isLoadingArticles = true;

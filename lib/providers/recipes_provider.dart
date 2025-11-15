@@ -195,6 +195,29 @@ class RecipesProvider with ChangeNotifier {
     }
   }
 
+  // Delete recipe
+  Future<void> deleteRecipe(String recipeId) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      await _firestore.collection('recipes').doc(recipeId).delete();
+      
+      // Remove from local lists
+      _myRecipes.removeWhere((r) => r.id == recipeId);
+      _recipes.removeWhere((r) => r.id == recipeId);
+      
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+      
+      notifyListeners();
+      debugPrint('✅ Recipe deleted');
+    } catch (e) {
+      _error = 'Ошибка удаления рецепта: $e';
+      debugPrint('❌ Error deleting recipe: $e');
+      rethrow;
+    }
+  }
+
   // Фильтрация по категории
   List<Recipe> filterByCategory(RecipeCategory? category) {
     if (category == null) return _recipes;

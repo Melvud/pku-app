@@ -6,18 +6,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/recipe.dart';
-import '../../providers/recipes_provider.dart';
-import '../../providers/user_provider.dart';
+import '../../providers/admin_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class AddRecipeScreen extends StatefulWidget {
-  const AddRecipeScreen({super.key});
+class AddAdminRecipeScreen extends StatefulWidget {
+  const AddAdminRecipeScreen({super.key});
 
   @override
-  State<AddRecipeScreen> createState() => _AddRecipeScreenState();
+  State<AddAdminRecipeScreen> createState() => _AddAdminRecipeScreenState();
 }
 
-class _AddRecipeScreenState extends State<AddRecipeScreen> {
+class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -32,7 +31,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   RecipeCategory _selectedCategory = RecipeCategory.snack;
   List<RecipeIngredient> _ingredients = [];
   List<RecipeStep> _steps = [];
-  Map<int, File> _stepImages = {}; // Map to store step images by index
+  Map<int, File> _stepImages = {};
   bool _isSubmitting = false;
   File? _coverImage;
   final ImagePicker _imagePicker = ImagePicker();
@@ -152,7 +151,6 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       );
       
       if (image != null) {
-        // Crop the image
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: image.path,
           uiSettings: [
@@ -313,9 +311,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       setState(() {
         _steps.add(RecipeStep(
           instruction: controller.text,
-          imageUrl: null, // Will be set after upload
+          imageUrl: null,
         ));
-        // Store the image temporarily - we'll upload it when submitting
         if (stepImage != null) {
           _stepImages[stepIndex] = stepImage!;
         }
@@ -349,8 +346,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final recipesProvider = Provider.of<RecipesProvider>(context, listen: false);
+      final adminProvider = Provider.of<AdminProvider>(context, listen: false);
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
@@ -363,7 +359,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         final coverRef = FirebaseStorage.instance
             .ref()
             .child('recipes')
-            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
+            .child('admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
         await coverRef.putFile(_coverImage!);
         coverImageUrl = await coverRef.getDownloadURL();
       }
@@ -377,7 +373,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               .ref()
               .child('recipes')
               .child('steps')
-              .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
+              .child('admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
           await stepImageRef.putFile(_stepImages[i]!);
           stepImageUrl = await stepImageRef.getDownloadURL();
         }
@@ -388,7 +384,6 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         ));
       }
 
-      // Create backward-compatible instructions list
       final instructionsList = stepsWithImages.map((s) => s.instruction).toList();
 
       final recipe = Recipe(
@@ -397,7 +392,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         description: _descriptionController.text,
         category: _selectedCategory,
         ingredients: _ingredients,
-        instructions: instructionsList, // Keep for backward compatibility
+        instructions: instructionsList,
         steps: stepsWithImages,
         servings: int.parse(_servingsController.text),
         cookingTimeMinutes: int.parse(_cookingTimeController.text),
@@ -414,19 +409,21 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
             : null,
         imageUrl: coverImageUrl,
         authorId: user.uid,
-        authorName: userProvider.userProfile?.name ?? 'Аноним',
-        status: RecipeStatus.pending,
+        authorName: 'Админ',
+        status: RecipeStatus.approved, // Admin recipes are auto-approved
         createdAt: DateTime.now(),
+        approvedAt: DateTime.now(),
         isOfficial: false,
+        isRecommended: true, // Mark as recommended
       );
 
-      await recipesProvider.addRecipe(recipe);
+      await adminProvider.addAdminRecipe(recipe);
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Рецепт отправлен на проверку!'),
+            content: Text('✅ Рецепт успешно опубликован!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -452,7 +449,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Добавить рецепт'),
+        title: const Text('Создать рекомендованный рецепт'),
         actions: [
           if (_isSubmitting)
             const Center(
@@ -472,7 +469,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
             IconButton(
               icon: const Icon(Icons.check),
               onPressed: _submitRecipe,
-              tooltip: 'Отправить на проверку',
+              tooltip: 'Опубликовать',
             ),
         ],
       ),
@@ -485,22 +482,23 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
             children: [
               // Info card
               Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: Colors.amber.shade50,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        Icons.star,
+                        color: Colors.amber.shade700,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Ваш рецепт будет проверен модераторами и опубликован после одобрения',
+                          'Рецепт будет опубликован сразу с отметкой "Рекомендация"',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Colors.amber.shade900,
                             fontSize: 13,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -890,7 +888,6 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         onPressed: () {
                           setState(() {
                             _steps.removeAt(index);
-                            // Remove image if it exists and re-index remaining images
                             final updatedImages = <int, File>{};
                             _stepImages.forEach((i, file) {
                               if (i < index) {
@@ -913,13 +910,14 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: _isSubmitting ? null : _submitRecipe,
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.publish),
                   label: const Text(
-                    'Отправить на проверку',
+                    'Опубликовать рецепт',
                     style: TextStyle(fontSize: 16),
                   ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.amber.shade700,
                   ),
                 ),
               ),

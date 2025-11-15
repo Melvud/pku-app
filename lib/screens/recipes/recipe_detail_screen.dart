@@ -258,6 +258,34 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           ),
                         ),
                       ],
+                      if (widget.recipe.isRecommended) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star, size: 14, color: Colors.amber.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Рекомендация',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -587,28 +615,33 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           
                           // Step photo if available
                           if (step.imageUrl != null) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                step.imageUrl!,
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: double.infinity,
-                                    height: 200,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.image_not_supported,
-                                      color: Colors.grey.shade400,
-                                      size: 48,
-                                    ),
-                                  );
-                                },
+                            GestureDetector(
+                              onTap: () {
+                                _showFullImage(context, step.imageUrl!);
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  step.imageUrl!,
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: double.infinity,
+                                      height: 200,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.image_not_supported,
+                                        color: Colors.grey.shade400,
+                                        size: 48,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -932,6 +965,51 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     } else {
       return '${date.day}.${date.month}.${date.year}';
     }
+  }
+
+  void _showFullImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: () => Navigator.pop(context),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/admin_provider.dart';
 import 'statistics_tab.dart';
 import 'recipes_approval_tab.dart';
+import 'recommended_recipes_tab.dart';
 import 'articles_management_tab.dart';
 import 'comments_moderation_tab.dart';
+import 'add_admin_recipe_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -20,7 +22,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    
+    // Listen to tab changes to update FAB
+    _tabController.addListener(() {
+      setState(() {});
+    });
     
     // Load initial data only if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,6 +88,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               text: 'Рецепты',
             ),
             Tab(
+              icon: Icon(Icons.star, size: 18),
+              text: 'Рекомендации',
+            ),
+            Tab(
               icon: Icon(Icons.article, size: 18),
               text: 'Статьи',
             ),
@@ -96,10 +107,30 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         children: const [
           StatisticsTab(),
           RecipesApprovalTab(),
+          RecommendedRecipesTab(),
           ArticlesManagementTab(),
           CommentsModerationTab(),
         ],
       ),
+      floatingActionButton: _tabController.index == 2
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddAdminRecipeScreen(),
+                  ),
+                ).then((_) {
+                  // Refresh recommended recipes after adding new one
+                  Provider.of<AdminProvider>(context, listen: false)
+                      .loadRecommendedRecipes();
+                });
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Создать рецепт'),
+              backgroundColor: Colors.amber.shade700,
+            )
+          : null,
     );
   }
 }
