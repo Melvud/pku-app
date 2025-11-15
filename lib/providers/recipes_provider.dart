@@ -255,13 +255,16 @@ class RecipesProvider with ChangeNotifier {
     }
   }
 
-  // Get comments for a recipe
+  // Get comments for a recipe (approved and reviewed comments)
   Future<List<RecipeComment>> getCommentsForRecipe(String recipeId) async {
     try {
       final snapshot = await _firestore
           .collection('recipe_comments')
           .where('recipeId', isEqualTo: recipeId)
-          .where('status', isEqualTo: CommentStatus.approved.name)
+          .where('status', whereIn: [
+            CommentStatus.approved.name,
+            CommentStatus.reviewed.name,
+          ])
           .orderBy('createdAt', descending: false)
           .get();
 
