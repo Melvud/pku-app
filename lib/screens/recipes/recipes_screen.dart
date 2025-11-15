@@ -47,14 +47,14 @@ class _RecipesScreenState extends State<RecipesScreen> {
             pinned: true,
             elevation: 0,
             backgroundColor: Theme.of(context).colorScheme.primary,
-            title: Text(
-              'Рецепты',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                'Рецепты',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -68,23 +68,12 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Рецепты при ФКУ',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
                         const Text(
-                          'Вкусные и безопасные блюда',
+                          'Вкусные и безопасные блюда при ФКУ',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
@@ -139,10 +128,14 @@ class _RecipesScreenState extends State<RecipesScreen> {
                   _CategoryChip(
                     label: 'Мои рецепты',
                     isSelected: _showMyRecipes,
-                    onTap: () => setState(() {
-                      _showMyRecipes = true;
-                      _selectedCategory = null;
-                    }),
+                    onTap: () {
+                      setState(() {
+                        _showMyRecipes = true;
+                        _selectedCategory = null;
+                      });
+                      // Reload my recipes when switching to this tab
+                      Provider.of<RecipesProvider>(context, listen: false).loadMyRecipes();
+                    },
                   ),
                   _CategoryChip(
                     label: 'Все',
@@ -250,12 +243,15 @@ class _RecipesScreenState extends State<RecipesScreen> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 0.75,
+                    childAspectRatio: 0.68,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final recipe = filteredRecipes[index];
-                      return _RecipeCard(recipe: recipe);
+                      return _RecipeCard(
+                        recipe: recipe,
+                        showStatus: _showMyRecipes,
+                      );
                     },
                     childCount: filteredRecipes.length,
                   ),
@@ -311,8 +307,12 @@ class _CategoryChip extends StatelessWidget {
 
 class _RecipeCard extends StatelessWidget {
   final Recipe recipe;
+  final bool showStatus;
 
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard({
+    required this.recipe,
+    this.showStatus = false,
+  });
 
   Color _getCategoryColor() {
     switch (recipe.category) {
@@ -400,7 +400,7 @@ class _RecipeCard extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  if (recipe.isOfficial)
+                  if (recipe.isOfficial && !showStatus)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -434,8 +434,8 @@ class _RecipeCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  // Status badge
-                  if (recipe.status == RecipeStatus.pending)
+                  // Status badges - only show when showStatus is true
+                  if (showStatus && recipe.status == RecipeStatus.pending)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -469,7 +469,7 @@ class _RecipeCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (recipe.status == RecipeStatus.rejected)
+                  if (showStatus && recipe.status == RecipeStatus.rejected)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -503,7 +503,7 @@ class _RecipeCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (recipe.status == RecipeStatus.approved && !recipe.isOfficial)
+                  if (showStatus && recipe.status == RecipeStatus.approved && !recipe.isOfficial)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -544,15 +544,16 @@ class _RecipeCard extends StatelessWidget {
             // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       recipe.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -562,28 +563,28 @@ class _RecipeCard extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.access_time,
-                          size: 14,
+                          size: 12,
                           color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 2),
                         Text(
                           '${recipe.cookingTimeMinutes} мин',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Icon(
                           Icons.restaurant_menu,
-                          size: 14,
+                          size: 12,
                           color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 2),
                         Text(
                           '${recipe.servings} порц.',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -595,37 +596,38 @@ class _RecipeCard extends StatelessWidget {
                         if (recipe.likesCount > 0) ...[
                           Icon(
                             Icons.favorite,
-                            size: 14,
+                            size: 12,
                             color: Colors.red.shade400,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           Text(
                             '${recipe.likesCount}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: Colors.grey.shade600,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 6),
                         ],
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 6,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.purple.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'Phe: ${recipe.phePer100g.toStringAsFixed(0)} мг/100г',
+                              'Phe: ${recipe.phePer100g.toStringAsFixed(0)}',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.purple.shade700,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
