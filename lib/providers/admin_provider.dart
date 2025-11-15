@@ -100,6 +100,10 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingRecipes.removeWhere((r) => r.id == recipeId);
+      
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error approving recipe: $e');
@@ -116,6 +120,10 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingRecipes.removeWhere((r) => r.id == recipeId);
+      
+      // Clear recipes cache to force refresh on next load
+      await _localDb.clearTable('recipes');
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error rejecting recipe: $e');
@@ -129,7 +137,7 @@ class AdminProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Load from cache first
+      // Step 1: Load from cache first and display immediately
       final cachedArticles = await _localDb.getCachedArticles();
       if (cachedArticles.isNotEmpty) {
         _articles = cachedArticles.map((a) => _articleFromMap(a)).toList();
@@ -138,37 +146,70 @@ class AdminProvider with ChangeNotifier {
         notifyListeners();
       }
 
-      // Check if we should sync with Firebase
-      final shouldSync = await _localDb.shouldSyncWithFirebase('articles');
-      if (!shouldSync) {
+      // Step 2: Check if we should sync with Firebase
+      final shouldSync = await _localDb.shouldSyncWithFirebase('articles', maxAge: const Duration(minutes: 5));
+      if (!shouldSync && cachedArticles.isNotEmpty) {
         debugPrint('ℹ️ Using cached articles (recent sync)');
         return;
       }
 
-      // Fetch from Firebase
+      // Step 3: Fetch from Firebase in the background
       debugPrint('🔄 Syncing articles from Firebase...');
       final snapshot = await _firestore
           .collection('articles')
           .orderBy('createdAt', descending: true)
           .get();
 
-      _articles = snapshot.docs
-          .map((doc) => Article.fromFirestore(doc))
-          .toList();
+      // Step 4: Only update if Firebase has different data
+      if (snapshot.docs.isNotEmpty) {
+        final firebaseArticles = snapshot.docs
+            .map((doc) => Article.fromFirestore(doc))
+            .toList();
 
-      // Update cache
-      await _localDb.cacheArticles(
-        snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList(),
-      );
+        // Compare if data has changed
+        bool hasChanges = _articles.length != firebaseArticles.length;
+        if (!hasChanges && _articles.isNotEmpty) {
+          // Check if any article has been updated
+          for (var i = 0; i < _articles.length && i < firebaseArticles.length; i++) {
+            if (_articles[i].id != firebaseArticles[i].id ||
+                _articles[i].createdAt != firebaseArticles[i].createdAt) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
 
-      debugPrint('✅ Loaded ${_articles.length} articles from Firebase');
+        if (hasChanges) {
+          // Update cache with new data from Firebase
+          await _localDb.cacheArticles(
+            snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList(),
+          );
+
+          _articles = firebaseArticles;
+          debugPrint('✅ Updated ${_articles.length} articles from Firebase');
+          notifyListeners();
+        } else {
+          // Just update sync time without changing data
+          await _localDb.cacheArticles(
+            snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList(),
+          );
+          debugPrint('✅ Articles up to date, refreshed sync time');
+        }
+      }
     } catch (e) {
       debugPrint('❌ Error loading articles: $e');
-      _articles = [];
+      // If we have cached data, keep using it even if Firebase fails
+      if (_articles.isEmpty) {
+        _articles = [];
+      }
     }
 
     _isLoadingArticles = false;

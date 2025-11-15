@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Local database service for caching Firebase data
 class LocalDatabaseService {
@@ -25,7 +26,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -55,19 +56,26 @@ class LocalDatabaseService {
         category TEXT NOT NULL,
         ingredients TEXT NOT NULL,
         instructions TEXT NOT NULL,
+        steps TEXT,
+        servings INTEGER,
         status TEXT NOT NULL,
         authorId TEXT NOT NULL,
         authorName TEXT NOT NULL,
         phePer100g REAL NOT NULL,
         proteinPer100g REAL NOT NULL,
-        fatPer100g REAL NOT NULL,
-        carbsPer100g REAL NOT NULL,
-        caloriesPer100g REAL NOT NULL,
+        fatPer100g REAL,
+        carbsPer100g REAL,
+        caloriesPer100g REAL,
         defaultServingSize REAL,
         cookingTime INTEGER,
         difficulty TEXT,
         imageUrl TEXT,
+        isOfficial INTEGER DEFAULT 0,
+        likesCount INTEGER DEFAULT 0,
+        likedBy TEXT,
         createdAt INTEGER NOT NULL,
+        approvedAt INTEGER,
+        rejectionReason TEXT,
         lastUpdated INTEGER NOT NULL
       )
     ''');
@@ -112,7 +120,25 @@ class LocalDatabaseService {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Handle database migrations here in the future
+    if (oldVersion < 2) {
+      // Add new columns for version 2
+      await db.execute('ALTER TABLE recipes ADD COLUMN steps TEXT');
+      await db.execute('ALTER TABLE recipes ADD COLUMN servings INTEGER');
+      await db.execute('ALTER TABLE recipes ADD COLUMN isOfficial INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE recipes ADD COLUMN likesCount INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE recipes ADD COLUMN likedBy TEXT');
+      await db.execute('ALTER TABLE recipes ADD COLUMN approvedAt INTEGER');
+      await db.execute('ALTER TABLE recipes ADD COLUMN rejectionReason TEXT');
+    }
+  }
+
+  // Helper method to convert Timestamp/DateTime/int to milliseconds
+  int _timestampToMillis(dynamic value) {
+    if (value == null) return DateTime.now().millisecondsSinceEpoch;
+    if (value is int) return value;
+    if (value is DateTime) return value.millisecondsSinceEpoch;
+    if (value is Timestamp) return value.millisecondsSinceEpoch;
+    return DateTime.now().millisecondsSinceEpoch;
   }
 
   // ARTICLES METHODS
@@ -131,9 +157,7 @@ class LocalDatabaseService {
           'pdfUrl': article['pdfUrl'],
           'createdBy': article['createdBy'],
           'createdByName': article['createdByName'],
-          'createdAt': article['createdAt'] is int 
-              ? article['createdAt'] 
-              : (article['createdAt'] as DateTime).millisecondsSinceEpoch,
+          'createdAt': _timestampToMillis(article['createdAt']),
           'lastUpdated': DateTime.now().millisecondsSinceEpoch,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -166,6 +190,8 @@ class LocalDatabaseService {
           'category': recipe['category'],
           'ingredients': jsonEncode(recipe['ingredients']),
           'instructions': jsonEncode(recipe['instructions']),
+          'steps': recipe['steps'] != null ? jsonEncode(recipe['steps']) : null,
+          'servings': recipe['servings'],
           'status': recipe['status'],
           'authorId': recipe['authorId'],
           'authorName': recipe['authorName'],
@@ -175,12 +201,15 @@ class LocalDatabaseService {
           'carbsPer100g': recipe['carbsPer100g'],
           'caloriesPer100g': recipe['caloriesPer100g'],
           'defaultServingSize': recipe['defaultServingSize'],
-          'cookingTime': recipe['cookingTime'],
+          'cookingTime': recipe['cookingTime'] ?? recipe['cookingTimeMinutes'],
           'difficulty': recipe['difficulty'],
           'imageUrl': recipe['imageUrl'],
-          'createdAt': recipe['createdAt'] is int 
-              ? recipe['createdAt'] 
-              : (recipe['createdAt'] as DateTime).millisecondsSinceEpoch,
+          'isOfficial': (recipe['isOfficial'] ?? false) ? 1 : 0,
+          'likesCount': recipe['likesCount'] ?? 0,
+          'likedBy': recipe['likedBy'] != null ? jsonEncode(recipe['likedBy']) : null,
+          'createdAt': _timestampToMillis(recipe['createdAt']),
+          'approvedAt': recipe['approvedAt'] != null ? _timestampToMillis(recipe['approvedAt']) : null,
+          'rejectionReason': recipe['rejectionReason'],
           'lastUpdated': DateTime.now().millisecondsSinceEpoch,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -200,6 +229,15 @@ class LocalDatabaseService {
       final decoded = Map<String, dynamic>.from(map);
       decoded['ingredients'] = jsonDecode(map['ingredients'] as String);
       decoded['instructions'] = jsonDecode(map['instructions'] as String);
+      if (map['steps'] != null) {
+        decoded['steps'] = jsonDecode(map['steps'] as String);
+      }
+      decoded['isOfficial'] = map['isOfficial'] == 1;
+      if (map['likedBy'] != null) {
+        decoded['likedBy'] = jsonDecode(map['likedBy'] as String);
+      } else {
+        decoded['likedBy'] = <String>[];
+      }
       return decoded;
     }).toList();
   }
@@ -247,9 +285,9 @@ class LocalDatabaseService {
         'userId': profile['userId'],
         'name': profile['name'],
         'email': profile['email'],
-        'dateOfBirth': profile['dateOfBirth'] is int
-            ? profile['dateOfBirth']
-            : (profile['dateOfBirth'] as DateTime?)?.millisecondsSinceEpoch,
+        'dateOfBirth': profile['dateOfBirth'] != null
+            ? _timestampToMillis(profile['dateOfBirth'])
+            : null,
         'weight': profile['weight'],
         'dailyTolerancePhe': profile['dailyTolerancePhe'],
         'medicalFormula': profile['medicalFormula'],
@@ -311,6 +349,12 @@ class LocalDatabaseService {
     
     final age = DateTime.now().difference(lastSync);
     return age > maxAge;
+  }
+
+  Future<bool> hasCache(String tableName) async {
+    final db = await database;
+    final result = await db.query(tableName, limit: 1);
+    return result.isNotEmpty;
   }
 
   // CLEANUP METHODS

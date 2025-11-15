@@ -27,7 +27,7 @@ class RecipesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Load from cache first
+      // Step 1: Load from cache first and display immediately
       final cachedRecipes = await _localDb.getCachedRecipes();
       if (cachedRecipes.isNotEmpty) {
         _recipes = cachedRecipes
@@ -39,14 +39,14 @@ class RecipesProvider with ChangeNotifier {
         notifyListeners();
       }
 
-      // Check if we should sync with Firebase
-      final shouldSync = await _localDb.shouldSyncWithFirebase('recipes');
-      if (!shouldSync) {
+      // Step 2: Check if we should sync with Firebase
+      final shouldSync = await _localDb.shouldSyncWithFirebase('recipes', maxAge: const Duration(minutes: 5));
+      if (!shouldSync && cachedRecipes.isNotEmpty) {
         debugPrint('ℹ️ Using cached recipes (recent sync)');
         return;
       }
 
-      // Fetch from Firebase
+      // Step 3: Fetch from Firebase in the background
       debugPrint('🔄 Syncing recipes from Firebase...');
       final snapshot = await _firestore
           .collection('recipes')
@@ -54,22 +54,56 @@ class RecipesProvider with ChangeNotifier {
           .orderBy('createdAt', descending: true)
           .get();
 
-      final firebaseRecipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
-      
-      // Update cache
-      await _localDb.cacheRecipes(
-        snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList(),
-      );
+      // Step 4: Only update if Firebase has different data
+      if (snapshot.docs.isNotEmpty) {
+        final firebaseRecipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+        
+        // Compare if data has changed
+        bool hasChanges = _recipes.length != firebaseRecipes.length;
+        if (!hasChanges && _recipes.isNotEmpty) {
+          // Check if any recipe has been updated
+          for (var i = 0; i < _recipes.length && i < firebaseRecipes.length; i++) {
+            if (_recipes[i].id != firebaseRecipes[i].id ||
+                _recipes[i].createdAt != firebaseRecipes[i].createdAt) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
 
-      _recipes = firebaseRecipes;
-      debugPrint('✅ Loaded ${_recipes.length} approved recipes from Firebase');
+        if (hasChanges) {
+          // Update cache with new data from Firebase
+          await _localDb.cacheRecipes(
+            snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList(),
+          );
+
+          _recipes = firebaseRecipes;
+          debugPrint('✅ Updated ${_recipes.length} recipes from Firebase');
+          notifyListeners();
+        } else {
+          // Just update sync time without changing data
+          await _localDb.cacheRecipes(
+            snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList(),
+          );
+          debugPrint('✅ Recipes up to date, refreshed sync time');
+        }
+      }
     } catch (e) {
       _error = 'Ошибка загрузки рецептов: $e';
       debugPrint('❌ Error loading recipes: $e');
+      // If we have cached data, keep using it even if Firebase fails
+      if (_recipes.isEmpty) {
+        _isLoading = false;
+        notifyListeners();
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
