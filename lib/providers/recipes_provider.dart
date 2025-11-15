@@ -86,29 +86,36 @@ class RecipesProvider with ChangeNotifier {
         (e) => e.name == map['category'],
         orElse: () => RecipeCategory.breakfast,
       ),
-      ingredients: (map['ingredients'] as List).cast<String>(),
-      instructions: (map['instructions'] as List).cast<String>(),
+      ingredients: (map['ingredients'] as List<dynamic>?)
+              ?.map((i) => RecipeIngredient.fromMap(i as Map<String, dynamic>))
+              .toList() ??
+          [],
+      instructions: (map['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+      steps: (map['steps'] as List<dynamic>?)
+              ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
+              .toList(),
+      servings: map['servings'] ?? 1,
+      cookingTimeMinutes: map['cookingTimeMinutes'] ?? map['cookingTime'] ?? 0,
       status: RecipeStatus.values.firstWhere(
         (e) => e.name == map['status'],
         orElse: () => RecipeStatus.pending,
       ),
-      authorId: map['authorId'],
-      authorName: map['authorName'],
-      phePer100g: map['phePer100g'],
-      proteinPer100g: map['proteinPer100g'],
-      fatPer100g: map['fatPer100g'],
-      carbsPer100g: map['carbsPer100g'],
-      caloriesPer100g: map['caloriesPer100g'],
-      defaultServingSize: map['defaultServingSize'],
-      cookingTime: map['cookingTime'],
-      difficulty: map['difficulty'] != null
-          ? RecipeDifficulty.values.firstWhere(
-              (e) => e.name == map['difficulty'],
-              orElse: () => RecipeDifficulty.medium,
-            )
-          : null,
+      authorId: map['authorId'] ?? '',
+      authorName: map['authorName'] ?? 'Аноним',
+      phePer100g: (map['phePer100g'] ?? 0).toDouble(),
+      proteinPer100g: (map['proteinPer100g'] ?? 0).toDouble(),
+      fatPer100g: map['fatPer100g']?.toDouble(),
+      carbsPer100g: map['carbsPer100g']?.toDouble(),
+      caloriesPer100g: map['caloriesPer100g']?.toDouble(),
       imageUrl: map['imageUrl'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
+      approvedAt: map['approvedAt'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(map['approvedAt'])
+          : null,
+      rejectionReason: map['rejectionReason'],
+      isOfficial: map['isOfficial'] ?? false,
+      likesCount: map['likesCount'] ?? 0,
+      likedBy: (map['likedBy'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 

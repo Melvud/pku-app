@@ -74,7 +74,7 @@ class UserProvider with ChangeNotifier {
       email: map['email'],
       dateOfBirth: map['dateOfBirth'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth'])
-          : null,
+          : DateTime.now().subtract(const Duration(days: 365 * 25)),
       weight: map['weight'],
       dailyTolerancePhe: map['dailyTolerancePhe'],
       medicalFormula: map['medicalFormula'],
