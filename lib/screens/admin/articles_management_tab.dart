@@ -236,6 +236,9 @@ class ArticlesManagementTab extends StatelessWidget {
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 final adminProvider = Provider.of<AdminProvider>(context, listen: false);
                 
+                // Сохраняем файл для использования после pop
+                final fileToUpload = selectedFile!;
+                
                 navigator.pop();
 
                 // Показываем диалог загрузки
@@ -286,8 +289,8 @@ class ArticlesManagementTab extends StatelessWidget {
                       .child('articles')
                       .child('${DateTime.now().millisecondsSinceEpoch}.pdf');
                   
-                  // Create and track the upload task
-                  uploadTask = storageRef.putFile(selectedFile);
+                  // Create and track the upload task - используем сохраненный файл
+                  uploadTask = storageRef.putFile(fileToUpload);
                   
                   // Wait for upload to complete
                   final snapshot = await uploadTask;
