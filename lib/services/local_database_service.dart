@@ -351,6 +351,12 @@ class LocalDatabaseService {
     return age > maxAge;
   }
 
+  Future<bool> hasCache(String tableName) async {
+    final db = await database;
+    final result = await db.query(tableName, limit: 1);
+    return result.isNotEmpty;
+  }
+
   // CLEANUP METHODS
 
   Future<void> clearCache() async {
