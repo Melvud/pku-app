@@ -114,6 +114,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       ),
       floatingActionButton: _tabController.index == 2
           ? FloatingActionButton.extended(
+              heroTag: 'add_admin_recipe_fab',
               onPressed: () {
                 Navigator.push(
                   context,
