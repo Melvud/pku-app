@@ -197,7 +197,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.file(
-                              stepImage,
+                              stepImage!,
                               width: double.infinity,
                               height: 150,
                               fit: BoxFit.cover,
