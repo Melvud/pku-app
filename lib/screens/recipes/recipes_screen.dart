@@ -25,8 +25,13 @@ class _RecipesScreenState extends State<RecipesScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<RecipesProvider>(context, listen: false);
-      provider.loadApprovedRecipes();
-      provider.loadMyRecipes(); // Also load my recipes
+      // Load recipes only if not already loaded
+      if (provider.recipes.isEmpty) {
+        provider.loadApprovedRecipes();
+      }
+      if (provider.myRecipes.isEmpty) {
+        provider.loadMyRecipes();
+      }
     });
   }
 

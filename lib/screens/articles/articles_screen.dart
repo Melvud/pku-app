@@ -17,9 +17,12 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
   @override
   void initState() {
     super.initState();
-    // Load articles when screen loads
+    // Load articles only if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AdminProvider>(context, listen: false).loadArticles();
+      final adminProvider = Provider.of<AdminProvider>(context, listen: false);
+      if (adminProvider.articles.isEmpty) {
+        adminProvider.loadArticles();
+      }
     });
   }
 

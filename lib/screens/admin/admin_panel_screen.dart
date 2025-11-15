@@ -22,13 +22,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     
-    // Load initial data
+    // Load initial data only if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final adminProvider = Provider.of<AdminProvider>(context, listen: false);
-      adminProvider.loadAppStats();
-      adminProvider.loadPendingRecipes();
-      adminProvider.loadArticles();
-      adminProvider.loadPendingComments();
+      
+      // Load stats only if empty
+      if (adminProvider.appStats.isEmpty) {
+        adminProvider.loadAppStats();
+      }
+      
+      // Load pending recipes only if empty
+      if (adminProvider.pendingRecipes.isEmpty) {
+        adminProvider.loadPendingRecipes();
+      }
+      
+      // Load articles only if empty
+      if (adminProvider.articles.isEmpty) {
+        adminProvider.loadArticles();
+      }
+      
+      // Load pending comments only if empty
+      if (adminProvider.pendingComments.isEmpty) {
+        adminProvider.loadPendingComments();
+      }
     });
   }
 
