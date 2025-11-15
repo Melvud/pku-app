@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipes_provider.dart';
 import '../../providers/user_provider.dart';
@@ -27,8 +30,10 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
   RecipeCategory _selectedCategory = RecipeCategory.snack;
   List<RecipeIngredient> _ingredients = [];
-  List<String> _instructions = [];
+  List<RecipeStep> _steps = [];
   bool _isSubmitting = false;
+  File? _coverImage;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void dispose() {
@@ -135,43 +140,151 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     );
   }
 
-  void _addInstruction() {
-    showDialog(
+  Future<void> _pickCoverImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _coverImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка выбора фото: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _addInstruction() async {
+    final controller = TextEditingController();
+    File? stepImage;
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final controller = TextEditingController();
-
-        return AlertDialog(
-          title: Text('Шаг ${_instructions.length + 1}'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Описание шага *',
-              hintText: 'Нарежьте яблоко на кусочки...',
-            ),
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  setState(() {
-                    _instructions.add(controller.text);
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Добавить'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Шаг ${_steps.length + 1}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Описание шага *',
+                        hintText: 'Нарежьте яблоко на кусочки...',
+                      ),
+                      maxLines: 3,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 16),
+                    if (stepImage != null) ...[
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              stepImage,
+                              width: double.infinity,
+                              height: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black54,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  stepImage = null;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          final XFile? image = await _imagePicker.pickImage(
+                            source: ImageSource.gallery,
+                            maxWidth: 1024,
+                            maxHeight: 1024,
+                            imageQuality: 85,
+                          );
+                          
+                          if (image != null) {
+                            setDialogState(() {
+                              stepImage = File(image.path);
+                            });
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Ошибка: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.add_photo_alternate),
+                      label: Text(stepImage == null ? 'Добавить фото' : 'Изменить фото'),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Отмена'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (controller.text.isNotEmpty) {
+                      Navigator.pop(context, true);
+                    }
+                  },
+                  child: const Text('Добавить'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
+
+    if (result == true && controller.text.isNotEmpty) {
+      setState(() {
+        _steps.add(RecipeStep(
+          instruction: controller.text,
+          imageUrl: null, // Will be set after upload
+        ));
+        // Store the image temporarily - we'll upload it when submitting
+        if (stepImage != null) {
+          // For now, we'll upload images during submission
+          // Store a reference to know which step has an image
+        }
+      });
+    }
   }
 
   Future<void> _submitRecipe() async {
@@ -187,7 +300,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       return;
     }
 
-    if (_instructions.isEmpty) {
+    if (_steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Добавьте хотя бы один шаг приготовления'),
@@ -208,13 +321,28 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         throw Exception('Необходима авторизация');
       }
 
+      // Upload cover image if present
+      String? coverImageUrl;
+      if (_coverImage != null) {
+        final coverRef = FirebaseStorage.instance
+            .ref()
+            .child('recipes')
+            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
+        await coverRef.putFile(_coverImage!);
+        coverImageUrl = await coverRef.getDownloadURL();
+      }
+
+      // Create backward-compatible instructions list
+      final instructionsList = _steps.map((s) => s.instruction).toList();
+
       final recipe = Recipe(
         id: '',
         name: _nameController.text,
         description: _descriptionController.text,
         category: _selectedCategory,
         ingredients: _ingredients,
-        instructions: _instructions,
+        instructions: instructionsList, // Keep for backward compatibility
+        steps: _steps,
         servings: int.parse(_servingsController.text),
         cookingTimeMinutes: int.parse(_cookingTimeController.text),
         phePer100g: double.parse(_pheController.text),
@@ -228,6 +356,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         caloriesPer100g: _caloriesController.text.isNotEmpty
             ? double.parse(_caloriesController.text)
             : null,
+        imageUrl: coverImageUrl,
         authorId: user.uid,
         authorName: userProvider.userProfile?.name ?? 'Аноним',
         status: RecipeStatus.pending,
@@ -257,7 +386,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         );
       }
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -354,6 +485,72 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                 textCapitalization: TextCapitalization.sentences,
                 validator: (value) =>
                     value?.isEmpty ?? true ? 'Введите описание' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Cover Image
+              Text(
+                'Фото рецепта',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickCoverImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: _coverImage != null
+                      ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _coverImage!,
+                                width: double.infinity,
+                                height: 180,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black54,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _coverImage = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Добавить обложку рецепта',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -590,7 +787,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               ),
               const SizedBox(height: 12),
 
-              if (_instructions.isEmpty)
+              if (_steps.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -613,19 +810,28 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   ),
                 )
               else
-                ...List.generate(_instructions.length, (index) {
-                  final instruction = _instructions[index];
+                ...List.generate(_steps.length, (index) {
+                  final step = _steps[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: CircleAvatar(
                         child: Text('${index + 1}'),
                       ),
-                      title: Text(instruction),
+                      title: Text(step.instruction),
+                      subtitle: step.imageUrl != null
+                          ? Row(
+                              children: const [
+                                Icon(Icons.image, size: 14, color: Colors.green),
+                                SizedBox(width: 4),
+                                Text('Фото добавлено', style: TextStyle(fontSize: 12)),
+                              ],
+                            )
+                          : null,
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
-                          setState(() => _instructions.removeAt(index));
+                          setState(() => _steps.removeAt(index));
                         },
                       ),
                     ),

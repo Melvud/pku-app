@@ -55,6 +55,9 @@ dependencies:
   
   # Firebase Storage for PDF files
   firebase_storage: ^12.3.4
+  
+  # Image Picker for recipe photos
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

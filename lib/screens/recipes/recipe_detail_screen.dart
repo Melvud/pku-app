@@ -38,10 +38,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     setState(() => _isLoadingComments = true);
     final provider = Provider.of<RecipesProvider>(context, listen: false);
     final comments = await provider.getCommentsForRecipe(widget.recipe.id);
-    setState(() {
-      _comments = comments;
-      _isLoadingComments = false;
-    });
+    if (mounted) {
+      setState(() {
+        _comments = comments;
+        _isLoadingComments = false;
+      });
+    }
   }
 
   Future<void> _addComment() async {
@@ -70,7 +72,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Комментарий опубликован'),
+            content: Text('Комментарий отправлен на модерацию'),
             behavior: SnackBarBehavior.floating,
             duration: Duration(seconds: 2),
           ),
@@ -155,97 +157,105 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Header with image
+          // Compact Header with cover image
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 200,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      color.withOpacity(0.7),
-                      color,
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    _getCategoryIcon(),
-                    size: 100,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ),
+              background: widget.recipe.imageUrl != null
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          widget.recipe.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildDefaultCover(color);
+                          },
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : _buildDefaultCover(color),
             ),
           ),
 
           // Content
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and badges
+                  // Title and Category Badge
+                  Text(
+                    widget.recipe.name,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  
                   Row(
                     children: [
-                      Expanded(
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: Text(
-                          widget.recipe.name,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          widget.recipe.category.displayName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
                         ),
                       ),
-                      if (widget.recipe.isOfficial)
+                      if (widget.recipe.isOfficial) ...[
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified, size: 16, color: color),
+                              Icon(Icons.verified, size: 14, color: Colors.blue.shade700),
                               const SizedBox(width: 4),
                               Text(
                                 'Официальный',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: color,
+                                  color: Colors.blue.shade700,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                      ],
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      widget.recipe.category.displayName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -253,233 +263,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   Text(
                     widget.recipe.description,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          height: 1.6,
+                          height: 1.5,
+                          color: Colors.grey.shade700,
                         ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // Info cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _InfoCard(
-                          icon: Icons.access_time,
-                          label: 'Время',
-                          value: '${widget.recipe.cookingTimeMinutes} мин',
-                          color: Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _InfoCard(
-                          icon: Icons.restaurant_menu,
-                          label: 'Порций',
-                          value: '${widget.recipe.servings}',
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Nutrition info
-                  Text(
-                    'Пищевая ценность (на 100г)',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.purple.shade200),
-                    ),
-                    child: Column(
-                      children: [
-                        _NutritionRow(
-                          label: 'Фенилаланин (Phe)',
-                          value: '${widget.recipe.phePer100g.toStringAsFixed(0)} мг',
-                          color: Colors.purple,
-                          isHighlighted: true,
-                        ),
-                        const Divider(height: 24),
-                        _NutritionRow(
-                          label: 'Белок',
-                          value: '${widget.recipe.proteinPer100g.toStringAsFixed(1)} г',
-                          color: Colors.blue,
-                        ),
-                        if (widget.recipe.fatPer100g != null) ...[
-                          const SizedBox(height: 12),
-                          _NutritionRow(
-                            label: 'Жиры',
-                            value: '${widget.recipe.fatPer100g!.toStringAsFixed(1)} г',
-                            color: Colors.amber,
-                          ),
-                        ],
-                        if (widget.recipe.carbsPer100g != null) ...[
-                          const SizedBox(height: 12),
-                          _NutritionRow(
-                            label: 'Углеводы',
-                            value: '${widget.recipe.carbsPer100g!.toStringAsFixed(1)} г',
-                            color: Colors.green,
-                          ),
-                        ],
-                        if (widget.recipe.caloriesPer100g != null) ...[
-                          const SizedBox(height: 12),
-                          _NutritionRow(
-                            label: 'Калории',
-                            value: '${widget.recipe.caloriesPer100g!.toStringAsFixed(0)} ккал',
-                            color: Colors.orange,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Ingredients
-                  Text(
-                    'Ингредиенты',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...widget.recipe.ingredients.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final ingredient = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: color,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              ingredient.displayText,
-                              style: const TextStyle(fontSize: 15, height: 1.4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 32),
-
-                  // Instructions
-                  Text(
-                    'Способ приготовления',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...widget.recipe.instructions.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final instruction = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                instruction,
-                                style: const TextStyle(fontSize: 15, height: 1.6),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 16),
-
-                  // Author info
-                  Card(
-                    color: Colors.grey.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: color.withOpacity(0.2),
-                            child: Icon(Icons.person, color: color),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Автор рецепта',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  widget.recipe.authorName,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Likes and Comments section - more compact
+                  // Unified Info Card: Author, Time, Servings, Likes, Comments
                   Consumer<RecipesProvider>(
                     builder: (context, provider, child) {
-                      // Find the updated recipe from the provider
                       Recipe currentRecipe = widget.recipe;
                       final updatedRecipe = provider.recipes
                           .firstWhere((r) => r.id == widget.recipe.id, orElse: () => widget.recipe);
@@ -498,49 +290,129 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       );
 
                       return Card(
+                        elevation: 0,
+                        color: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             children: [
-                              InkWell(
-                                onTap: _toggleLike,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        isLiked ? Icons.favorite : Icons.favorite_border,
-                                        color: isLiked ? Colors.red : Colors.grey,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '${currentRecipe.likesCount}',
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
+                              // Author Info
                               Row(
                                 children: [
-                                  Icon(
-                                    Icons.comment_outlined,
-                                    color: Colors.grey.shade600,
-                                    size: 22,
+                                  CircleAvatar(
+                                    backgroundColor: color.withOpacity(0.2),
+                                    radius: 20,
+                                    child: Icon(Icons.person, color: color, size: 20),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${_comments.length}',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey.shade700,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.recipe.authorName,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _formatDate(widget.recipe.createdAt),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+                              
+                              // Time and Servings
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _CompactInfoChip(
+                                      icon: Icons.access_time,
+                                      label: '${widget.recipe.cookingTimeMinutes} мин',
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _CompactInfoChip(
+                                      icon: Icons.restaurant_menu,
+                                      label: '${widget.recipe.servings} порц.',
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+                              
+                              // Likes and Comments
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  InkWell(
+                                    onTap: _toggleLike,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isLiked ? Icons.favorite : Icons.favorite_border,
+                                            color: isLiked ? Colors.red : Colors.grey.shade600,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${currentRecipe.likesCount}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    height: 30,
+                                    width: 1,
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.comment_outlined,
+                                          color: Colors.grey.shade600,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${_comments.length}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -553,7 +425,205 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Nutrition info
+                  Text(
+                    'Пищевая ценность на 100г',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.purple.shade100),
+                    ),
+                    child: Column(
+                      children: [
+                        _NutritionRow(
+                          label: 'Фенилаланин',
+                          value: '${widget.recipe.phePer100g.toStringAsFixed(0)} мг',
+                          color: Colors.purple,
+                          isHighlighted: true,
+                        ),
+                        const SizedBox(height: 12),
+                        _NutritionRow(
+                          label: 'Белок',
+                          value: '${widget.recipe.proteinPer100g.toStringAsFixed(1)} г',
+                          color: Colors.blue,
+                          isHighlighted: true,
+                        ),
+                        if (widget.recipe.fatPer100g != null) ...[
+                          const SizedBox(height: 8),
+                          _NutritionRow(
+                            label: 'Жиры',
+                            value: '${widget.recipe.fatPer100g!.toStringAsFixed(1)} г',
+                            color: Colors.amber,
+                          ),
+                        ],
+                        if (widget.recipe.carbsPer100g != null) ...[
+                          const SizedBox(height: 8),
+                          _NutritionRow(
+                            label: 'Углеводы',
+                            value: '${widget.recipe.carbsPer100g!.toStringAsFixed(1)} г',
+                            color: Colors.green,
+                          ),
+                        ],
+                        if (widget.recipe.caloriesPer100g != null) ...[
+                          const SizedBox(height: 8),
+                          _NutritionRow(
+                            label: 'Калории',
+                            value: '${widget.recipe.caloriesPer100g!.toStringAsFixed(0)} ккал',
+                            color: Colors.orange,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Ingredients
+                  Text(
+                    'Ингредиенты',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...widget.recipe.ingredients.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final ingredient = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: color,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              ingredient.displayText,
+                              style: const TextStyle(fontSize: 15, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 28),
+
+                  // Instructions with Photos
+                  Text(
+                    'Приготовление',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...widget.recipe.recipeSteps.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final step = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Step header
+                          Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Шаг ${index + 1}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Step photo if available
+                          if (step.imageUrl != null) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                step.imageUrl!,
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: double.infinity,
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey.shade400,
+                                      size: 48,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          
+                          // Step instruction
+                          Text(
+                            step.instruction,
+                            style: const TextStyle(fontSize: 15, height: 1.6),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+
                   // Comments section
+                  const Divider(height: 32),
                   Row(
                     children: [
                       Text(
@@ -565,15 +635,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       if (_comments.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${_comments.length}',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: color,
                             ),
@@ -588,6 +658,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   Card(
                     elevation: 0,
                     color: Colors.grey.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -658,6 +731,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     Card(
                       elevation: 0,
                       color: Colors.grey.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: const Padding(
                         padding: EdgeInsets.all(24),
                         child: Center(
@@ -684,14 +760,26 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  String _pluralizeLikes(int count) {
-    if (count % 10 == 1 && count % 100 != 11) {
-      return 'лайк';
-    } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
-      return 'лайка';
-    } else {
-      return 'лайков';
-    }
+  Widget _buildDefaultCover(Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.7),
+            color,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          _getCategoryIcon(),
+          size: 80,
+          color: Colors.white.withOpacity(0.9),
+        ),
+      ),
+    );
   }
 
   List<Widget> _buildCommentTree() {
@@ -700,7 +788,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     
     for (final comment in topLevelComments) {
       widgets.add(_buildCommentCard(comment, 0));
-      // Find replies
       final replies = _comments.where((c) => c.parentCommentId == comment.id).toList();
       for (final reply in replies) {
         widgets.add(_buildCommentCard(reply, 1));
@@ -713,7 +800,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   Widget _buildCommentCard(RecipeComment comment, int level) {
     final color = _getCategoryColor();
     final isAuthor = comment.authorId == widget.recipe.authorId;
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     
     return Padding(
       padding: EdgeInsets.only(
@@ -721,8 +807,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         bottom: 8,
       ),
       child: Card(
-        elevation: level == 0 ? 1 : 0,
-        color: level == 0 ? null : Colors.grey.shade50,
+        elevation: level == 0 ? 0 : 0,
+        color: level == 0 ? Colors.white : Colors.grey.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -843,44 +932,35 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   }
 }
 
-class _InfoCard extends StatelessWidget {
+class _CompactInfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String value;
   final Color color;
 
-  const _InfoCard({
+  const _CompactInfoChip({
     required this.icon,
     required this.label,
-    required this.value,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
@@ -920,7 +1000,7 @@ class _NutritionRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: isHighlighted ? 16 : 15,
+              fontSize: isHighlighted ? 15 : 14,
               fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -928,7 +1008,7 @@ class _NutritionRow extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: isHighlighted ? 18 : 16,
+            fontSize: isHighlighted ? 16 : 15,
             fontWeight: FontWeight.bold,
             color: color,
           ),
