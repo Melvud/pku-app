@@ -1026,7 +1026,7 @@ class _MealCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Выпил смесь',
+                        'Смесь',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: session.drankFormula 
