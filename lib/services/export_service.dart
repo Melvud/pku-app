@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -237,7 +238,7 @@ class ExportService {
 
       // Header
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Статистика питания' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Статистика питания');
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(
         bold: true,
@@ -246,20 +247,20 @@ class ExportService {
       row++;
 
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = DateFormat('MMMM yyyy', 'ru').format(month) as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue(DateFormat('MMMM yyyy', 'ru').format(month));
       row++;
 
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Пользователь: $userName' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Пользователь: $userName');
       row++;
 
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
       row += 2;
 
       // Summary Section
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Общие показатели' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Общие показатели');
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true);
       row++;
@@ -282,7 +283,7 @@ class ExportService {
         for (var i = 0; i < rowData.length; i++) {
           sheet
               .cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row))
-              .value = rowData[i] as excel_lib.CellValue;
+              .value = excel_lib.TextCellValue(rowData[i]);
         }
         row++;
       }
@@ -291,7 +292,7 @@ class ExportService {
 
       // Daily Stats Section
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Детализация по дням' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Детализация по дням');
       sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true);
       row++;
@@ -300,7 +301,7 @@ class ExportService {
       final headers = ['День', 'Дата', 'Phe (мг)', '% лимита', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
       for (var i = 0; i < headers.length; i++) {
         final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-        cell.value = headers[i] as excel_lib.CellValue;
+        cell.value = excel_lib.TextCellValue(headers[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
           backgroundColorHex: excel_lib.ExcelColor.fromHexString('#DDDDDD'),
@@ -347,7 +348,7 @@ class ExportService {
 
         for (var i = 0; i < rowData.length; i++) {
           final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-          cell.value = rowData[i] as excel_lib.CellValue;
+          cell.value = excel_lib.TextCellValue(rowData[i]);
           if (bgColor != null) {
             cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
           }
@@ -705,21 +706,21 @@ class ExportService {
 
       // Header
       summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Статистика питания' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Статистика питания');
       summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true, fontSize: 16);
       row++;
 
       summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Период: ${DateFormat('d MMMM yyyy', 'ru').format(startDate)} - ${DateFormat('d MMMM yyyy', 'ru').format(endDate)}' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Период: ${DateFormat('d MMMM yyyy', 'ru').format(startDate)} - ${DateFormat('d MMMM yyyy', 'ru').format(endDate)}');
       row++;
 
       summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Пользователь: $userName' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Пользователь: $userName');
       row++;
 
       summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = 'Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}' as excel_lib.CellValue;
+          .value = excel_lib.TextCellValue('Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
       row += 2;
 
       // Summary data
@@ -741,7 +742,7 @@ class ExportService {
         for (var i = 0; i < rowData.length; i++) {
           summarySheet
               .cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row))
-              .value = rowData[i] as excel_lib.CellValue;
+              .value = excel_lib.TextCellValue(rowData[i]);
         }
         row++;
       }
@@ -751,7 +752,7 @@ class ExportService {
       final monthlyHeaders = ['Месяц', 'Всего Phe (мг)', 'Среднее Phe/день (мг)', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
       for (var i = 0; i < monthlyHeaders.length; i++) {
         final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-        cell.value = monthlyHeaders[i] as excel_lib.CellValue;
+        cell.value = excel_lib.TextCellValue(monthlyHeaders[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
           backgroundColorHex: excel_lib.ExcelColor.fromHexString('#DDDDDD'),
@@ -795,7 +796,7 @@ class ExportService {
 
         for (var i = 0; i < rowData.length; i++) {
           final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-          cell.value = rowData[i] as excel_lib.CellValue;
+          cell.value = excel_lib.TextCellValue(rowData[i]);
           cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
         }
         row++;
@@ -806,7 +807,7 @@ class ExportService {
       final dailyHeaders = ['Дата', 'Phe (мг)', '% лимита', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
       for (var i = 0; i < dailyHeaders.length; i++) {
         final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-        cell.value = dailyHeaders[i] as excel_lib.CellValue;
+        cell.value = excel_lib.TextCellValue(dailyHeaders[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
           backgroundColorHex: excel_lib.ExcelColor.fromHexString('#DDDDDD'),
@@ -849,7 +850,7 @@ class ExportService {
 
         for (var i = 0; i < rowData.length; i++) {
           final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
-          cell.value = rowData[i] as excel_lib.CellValue;
+          cell.value = excel_lib.TextCellValue(rowData[i]);
           if (bgColor != null) {
             cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
           }
@@ -874,8 +875,4 @@ class ExportService {
       rethrow;
     }
   }
-}
-
-void debugPrint(String message) {
-  print(message);
 }
