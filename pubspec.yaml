@@ -36,6 +36,7 @@ dependencies:
   googleapis: ^13.2.0
   googleapis_auth: ^1.6.0
   http: ^1.2.2
+  crypto: ^3.0.3
   
   # Export
   pdf: ^3.11.1
