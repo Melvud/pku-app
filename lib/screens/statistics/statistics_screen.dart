@@ -17,9 +17,7 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late PageController _monthPageController;
   DateTime _selectedMonth = DateTime.now();
-  int _currentMonthIndex = 0;
   bool _isLoading = true;
   Map<String, dynamic>? _stats;
 
@@ -27,21 +25,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
-    // Calculate initial month index (from 2020 to now)
-    final startDate = DateTime(2020, 1);
-    final monthsDiff = (_selectedMonth.year - startDate.year) * 12 +
-                       (_selectedMonth.month - startDate.month);
-    _currentMonthIndex = monthsDiff;
-
-    _monthPageController = PageController(initialPage: _currentMonthIndex);
     _loadStats();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _monthPageController.dispose();
     super.dispose();
   }
 
@@ -69,27 +58,22 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     _loadStats();
   }
 
-  void _onMonthPageChanged(int index) {
-    final startDate = DateTime(2020, 1);
-    final newDate = DateTime(startDate.year, startDate.month + index);
-
-    if (newDate.isAfter(DateTime.now())) return;
-
-    setState(() {
-      _currentMonthIndex = index;
-      _selectedMonth = newDate;
-    });
-    _loadStats();
-  }
-
   Future<void> _showDateRangePickerAndExport(String format) async {
+    // Ensure the end date is not after today
+    final monthStart = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+    final monthEnd = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+    final now = DateTime.now();
+    final effectiveEnd = monthEnd.isAfter(now)
+        ? DateTime(now.year, now.month, now.day)
+        : monthEnd;
+
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: now,
       initialDateRange: DateTimeRange(
-        start: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
-        end: DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0),
+        start: monthStart,
+        end: effectiveEnd,
       ),
       locale: const Locale('ru'),
       builder: (context, child) {
@@ -164,6 +148,123 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         );
       }
     }
+  }
+
+  Future<void> _showMonthYearPicker() async {
+    final now = DateTime.now();
+    int selectedYear = _selectedMonth.year;
+    int selectedMonth = _selectedMonth.month;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Выберите месяц и год'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Year selector
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: selectedYear > 2020
+                              ? () => setState(() => selectedYear--)
+                              : null,
+                        ),
+                        Text(
+                          '$selectedYear',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: selectedYear < now.year
+                              ? () => setState(() => selectedYear++)
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Month grid
+                    GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: 12,
+                      itemBuilder: (context, index) {
+                        final month = index + 1;
+                        final monthDate = DateTime(selectedYear, month);
+                        final isAvailable = !monthDate.isAfter(now);
+                        final isSelected = selectedYear == _selectedMonth.year &&
+                            month == _selectedMonth.month;
+
+                        return InkWell(
+                          onTap: isAvailable
+                              ? () {
+                                  setState(() => selectedMonth = month);
+                                  Navigator.pop(context);
+                                  this.setState(() {
+                                    _selectedMonth = DateTime(selectedYear, month);
+                                  });
+                                  _loadStats();
+                                }
+                              : null,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : isAvailable
+                                      ? Colors.grey.shade100
+                                      : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                DateFormat('MMM', 'ru').format(monthDate),
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : isAvailable
+                                          ? Colors.black87
+                                          : Colors.grey.shade400,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Отмена'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showExportDialog() {
@@ -246,97 +347,138 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // App Bar with month navigation
-          AppHeader(
-            title: 'Статистика',
-            subtitle: '',
-            expandedHeight: 140,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.file_download, color: Colors.white),
-                onPressed: _showExportDialog,
-                tooltip: 'Экспорт',
-              ),
-            ],
-            bottom: Container(
-              color: Theme.of(context).colorScheme.surface,
-              child: Column(
-                children: [
-                  // Month navigation
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.chevron_left,
-                            color: canGoPrevious ? Theme.of(context).colorScheme.primary : Colors.grey,
+      body: GestureDetector(
+        // Add swipe detection for month navigation
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! < -500 && canGoNext) {
+              // Swipe left - next month
+              _changeMonth(1);
+            } else if (details.primaryVelocity! > 500 && canGoPrevious) {
+              // Swipe right - previous month
+              _changeMonth(-1);
+            }
+          }
+        },
+        child: CustomScrollView(
+          slivers: [
+            // App Bar with month navigation
+            AppHeader(
+              title: 'Статистика',
+              subtitle: '',
+              expandedHeight: 160,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.file_download, color: Colors.white),
+                  onPressed: _showExportDialog,
+                  tooltip: 'Экспорт',
+                ),
+              ],
+              bottom: Container(
+                color: Theme.of(context).colorScheme.surface,
+                child: Column(
+                  children: [
+                    // Month navigation
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.chevron_left,
+                              color: canGoPrevious ? Theme.of(context).colorScheme.primary : Colors.grey,
+                            ),
+                            onPressed: canGoPrevious ? () => _changeMonth(-1) : null,
                           ),
-                          onPressed: canGoPrevious ? () => _changeMonth(-1) : null,
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              DateFormat('LLLL yyyy', 'ru').format(_selectedMonth),
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: _showMonthYearPicker,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        DateFormat('LLLL yyyy', 'ru').format(_selectedMonth),
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.calendar_month,
+                                      size: 18,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.chevron_right,
-                            color: canGoNext ? Theme.of(context).colorScheme.primary : Colors.grey,
+                          IconButton(
+                            icon: Icon(
+                              Icons.chevron_right,
+                              color: canGoNext ? Theme.of(context).colorScheme.primary : Colors.grey,
+                            ),
+                            onPressed: canGoNext ? () => _changeMonth(1) : null,
                           ),
-                          onPressed: canGoNext ? () => _changeMonth(1) : null,
-                        ),
+                        ],
+                      ),
+                    ),
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Theme.of(context).colorScheme.primary,
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      indicatorWeight: 3,
+                      labelStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Обзор'),
+                        Tab(text: 'По дням'),
                       ],
                     ),
-                  ),
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: Theme.of(context).colorScheme.primary,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Theme.of(context).colorScheme.primary,
-                    indicatorWeight: 3,
-                    labelStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    tabs: const [
-                      Tab(text: 'Обзор'),
-                      Tab(text: 'По дням'),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Content
-          if (_isLoading)
-            const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_stats == null)
-            const SliverFillRemaining(
-              child: Center(child: Text('Нет данных за выбранный месяц')),
-            )
-          else
-            SliverFillRemaining(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _OverviewTab(stats: _stats!),
-                  _DailyTab(stats: _stats!, month: _selectedMonth),
-                ],
+            // Content
+            if (_isLoading)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_stats == null)
+              const SliverFillRemaining(
+                child: Center(child: Text('Нет данных за выбранный месяц')),
+              )
+            else
+              SliverFillRemaining(
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(), // Disable swipe for tabs
+                  children: [
+                    _OverviewTab(stats: _stats!),
+                    _DailyTab(stats: _stats!, month: _selectedMonth),
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -369,12 +511,12 @@ class _OverviewTab extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.3,
+                childAspectRatio: 1.4,
                 children: [
                   _ModernSummaryCard(
                     title: 'Среднее Phe',
                     value: '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)}',
-                    unit: 'мг/день',
+                    unit: 'мг',
                     subtitle: 'Всего: ${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг',
                     color: Colors.purple,
                     icon: Icons.medical_information_outlined,
@@ -394,15 +536,15 @@ class _OverviewTab extends StatelessWidget {
                   _ModernSummaryCard(
                     title: 'Средний белок',
                     value: '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)}',
-                    unit: 'г/день',
+                    unit: 'г',
                     subtitle: 'Всего: ${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г',
                     color: Colors.blue,
                     icon: Icons.egg_outlined,
                   ),
                   _ModernSummaryCard(
-                    title: 'Средние калории',
+                    title: 'Ср. калории',
                     value: '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)}',
-                    unit: 'ккал/день',
+                    unit: 'ккал',
                     subtitle: 'Всего: ${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал',
                     color: Colors.orange,
                     icon: Icons.local_fire_department_outlined,
@@ -770,7 +912,7 @@ class _ModernSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -785,24 +927,29 @@ class _ModernSummaryCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 18),
               ),
               if (progress != null)
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 3,
-                  backgroundColor: color.withOpacity(0.2),
-                  valueColor: AlwaysStoppedAnimation(color),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 3,
+                    backgroundColor: color.withOpacity(0.2),
+                    valueColor: AlwaysStoppedAnimation(color),
+                  ),
                 ),
             ],
           ),
@@ -810,41 +957,49 @@ class _ModernSummaryCard extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w500,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     color: Colors.grey.shade600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 9,
               color: Colors.grey.shade600,
             ),
             maxLines: 1,
