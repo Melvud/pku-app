@@ -1100,7 +1100,7 @@ class _ModernPheChart extends StatelessWidget {
           ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor: Colors.purple.shade700,
+              backgroundColor: Colors.purple.shade700,
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
                   return LineTooltipItem(
@@ -1425,7 +1425,7 @@ class _WeeklyComparisonChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.purple.shade700,
+              backgroundColor: Colors.purple.shade700,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 return BarTooltipItem(
                   'Неделя ${group.x + 1}\n${rod.toY.toStringAsFixed(0)} мг',

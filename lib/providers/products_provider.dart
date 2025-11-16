@@ -463,48 +463,7 @@ class ProductsProvider with ChangeNotifier {
 
   /// Обработка продуктов из Google Sheets и сохранение в Firestore
   Future<void> _processSyncedProducts(List<Product> sheetProducts) async {
-    try {
-      _syncProgress = 0.4;
-      _syncStatus = 'Получено ${sheetProducts.length} продуктов';
-      notifyListeners();
-
-        final success = await _usdaSyncService.syncToGoogleSheets(maxProducts: 500);
-
-        if (!success) {
-          _error = 'Ошибка загрузки данных из USDA';
-          _isSyncing = false;
-          notifyListeners();
-          return;
-        }
-
-        _syncProgress = 0.5;
-        _syncStatus = 'Данные USDA загружены в таблицу. Обновление локальной базы...';
-        notifyListeners();
-
-        await Future.delayed(const Duration(seconds: 2));
-
-        final updatedSheetProducts = await _sheetsService.fetchProducts();
-
-        if (updatedSheetProducts.isEmpty) {
-          _error = 'Не удалось загрузить данные из USDA';
-          _isSyncing = false;
-          notifyListeners();
-          return;
-        }
-
-        return await _syncProductsToFirestore(updatedSheetProducts);
-      }
-
-      return await _syncProductsToFirestore(sheetProducts);
-    } catch (e) {
-      _error = 'Ошибка синхронизации: $e';
-      debugPrint(_error);
-    } finally {
-      _isSyncing = false;
-      _syncProgress = 0.0;
-      _syncStatus = '';
-      notifyListeners();
-    }
+    await _syncProductsToFirestore(sheetProducts);
   }
 
   Future<void> _syncProductsToFirestore(List<Product> sheetProducts) async {
@@ -543,7 +502,53 @@ class ProductsProvider with ChangeNotifier {
         notifyListeners();
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      String? docId;
+      if (product.googleSheetsId != null &&
+          existingProducts.containsKey(product.googleSheetsId)) {
+        docId = existingProducts[product.googleSheetsId];
+        updatedCount++;
+      } else if (product.barcode != null &&
+                 existingBarcodes.containsKey(product.barcode)) {
+        docId = existingBarcodes[product.barcode];
+        updatedCount++;
+      } else {
+        addedCount++;
+      }
+
+      if (docId != null) {
+        batch.update(
+          _firestore.collection('products').doc(docId),
+          product.toFirestore(),
+        );
+      } else {
+        batch.set(
+          _firestore.collection('products').doc(),
+          product.toFirestore(),
+        );
+      }
+
+      if ((i + 1) % 500 == 0) {
+        await batch.commit();
+        debugPrint('✅ Committed batch at ${i + 1} products');
+      }
+    }
+
+    await batch.commit();
+
+    _syncProgress = 0.9;
+    _syncStatus = 'Обновление локального кэша...';
+    notifyListeners();
+
+    await loadProducts();
+
+    _lastSync = DateTime.now();
+    await _saveLastSyncTime();
+
+    _syncProgress = 1.0;
+    _syncStatus = 'Синхронизация завершена: +$addedCount новых, ~$updatedCount обновлено';
+    notifyListeners();
+
+    debugPrint('✅ Sync completed: $addedCount added, $updatedCount updated');
   }
 
   Future<void> addProduct(Product product) async {

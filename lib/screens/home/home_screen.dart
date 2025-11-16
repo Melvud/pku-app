@@ -172,29 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.qr_code_scanner, color: Colors.purple),
-                ),
-                title: const Text('Сканировать QR-код'),
-                subtitle: const Text('Быстрое добавление'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          QRScannerScreen(mealType: session.type),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
