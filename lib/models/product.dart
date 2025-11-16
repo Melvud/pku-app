@@ -142,11 +142,9 @@ class Product {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
-  /// Парсинг данных из FatSecret Platform API
   factory Product.fromFatSecret(Map<String, dynamic> data, String barcode) {
     final food = data['food'] as Map<String, dynamic>? ?? data;
 
-    // FatSecret возвращает пищевую ценность в servings
     final servings = food['servings'] as Map<String, dynamic>?;
     final serving = servings != null && servings['serving'] != null
         ? (servings['serving'] is List
@@ -154,13 +152,11 @@ class Product {
             : servings['serving'] as Map<String, dynamic>)
         : <String, dynamic>{};
 
-    // Получаем пищевую ценность на 100г
     final protein = _parseDouble(serving['protein']);
     final fat = _parseDouble(serving['fat']);
     final carbs = _parseDouble(serving['carbohydrate']);
     final calories = _parseDouble(serving['calories']);
 
-    // Оценочный расчет Phe: примерно 50 мг на 1 г белка
     final estimatedPhe = protein * 50;
 
     return Product(
@@ -181,13 +177,11 @@ class Product {
     );
   }
 
-  /// Парсинг данных из USDA FoodData Central
   factory Product.fromUSDA(Map<String, dynamic> data) {
     final description = data['description'] as String? ??
                        data['lowercaseDescription'] as String? ??
                        'Неизвестный продукт';
 
-    // USDA хранит пищевую ценность в массиве foodNutrients
     final nutrients = data['foodNutrients'] as List<dynamic>? ?? [];
 
     double protein = 0.0;
@@ -195,7 +189,6 @@ class Product {
     double carbs = 0.0;
     double calories = 0.0;
 
-    // Коды питательных веществ USDA
     for (var nutrient in nutrients) {
       final nutrientData = nutrient is Map<String, dynamic> ? nutrient : {};
       final nutrientId = nutrientData['nutrientId'] as int? ??
@@ -203,25 +196,22 @@ class Product {
       final value = _parseDouble(nutrientData['value']);
 
       switch (nutrientId) {
-        case 1003: // Protein
+        case 1003:
           protein = value;
           break;
-        case 1004: // Total lipid (fat)
+        case 1004:
           fat = value;
           break;
-        case 1005: // Carbohydrate, by difference
+        case 1005:
           carbs = value;
           break;
-        case 1008: // Energy (kcal)
+        case 1008:
           calories = value;
           break;
       }
     }
 
-    // Оценочный расчет Phe: примерно 50 мг на 1 г белка
     final estimatedPhe = protein * 50;
-
-    // Получаем штрих-код если есть
     final barcode = data['gtinUpc'] as String?;
 
     return Product(

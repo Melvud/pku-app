@@ -1,27 +1,17 @@
 // lib/services/fatsecret_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:crypto/crypto.dart';
 import '../models/product.dart';
 
-/// Сервис для работы с FatSecret Platform API
-///
-/// FatSecret предоставляет обширную базу данных продуктов с пищевой ценностью
-/// и поддержку поиска по штрих-кодам.
-///
-/// Для использования необходимо получить API ключи на https://platform.fatsecret.com/api/
 class FatSecretService {
-  // TODO: Заменить на реальные ключи из FatSecret Platform
-  static const String _clientId = 'YOUR_FATSECRET_CLIENT_ID';
-  static const String _clientSecret = 'YOUR_FATSECRET_CLIENT_SECRET';
+  static const String _clientId = 'e79230eb6fdb4417bab04f9530151e12';
+  static const String _clientSecret = '102da768ee124338b77f4cb38cee8010';
   static const String _baseUrl = 'https://platform.fatsecret.com/rest/server.api';
 
   String? _accessToken;
   DateTime? _tokenExpiry;
 
-  /// Получение access token через OAuth 2.0 Client Credentials
   Future<String> _getAccessToken() async {
-    // Проверяем, есть ли валидный токен
     if (_accessToken != null &&
         _tokenExpiry != null &&
         DateTime.now().isBefore(_tokenExpiry!)) {
@@ -60,7 +50,6 @@ class FatSecretService {
     }
   }
 
-  /// Поиск продукта по штрих-коду
   Future<Product?> getProductByBarcode(String barcode) async {
     try {
       final token = await _getAccessToken();
@@ -100,7 +89,6 @@ class FatSecretService {
     }
   }
 
-  /// Получение детальной информации о продукте по ID
   Future<Product?> _getProductById(String foodId, String barcode) async {
     try {
       final token = await _getAccessToken();
@@ -132,7 +120,6 @@ class FatSecretService {
     }
   }
 
-  /// Поиск продуктов по названию
   Future<List<Product>> searchProducts(String query, {int maxResults = 20}) async {
     try {
       final token = await _getAccessToken();
