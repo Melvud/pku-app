@@ -13,7 +13,8 @@ class ProductsProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSheetsService _sheetsService = GoogleSheetsService();
   final MultiSourceBarcodeService _barcodeService = MultiSourceBarcodeService();
-  
+  final USDASyncService _usdaSyncService = USDASyncService();
+
   List<Product> _products = [];
   bool _isLoading = false;
   bool _isSyncing = false;
@@ -467,107 +468,80 @@ class ProductsProvider with ChangeNotifier {
       _syncStatus = 'Получено ${sheetProducts.length} продуктов';
       notifyListeners();
 
-      final existingSnapshot = await _firestore.collection('products').get();
-      final existingProducts = <String, String>{};
-      final existingBarcodes = <String, String>{};
-      
-      for (var doc in existingSnapshot.docs) {
-        final data = doc.data();
-        if (data['googleSheetsId'] != null) {
-          existingProducts[data['googleSheetsId'] as String] = doc.id;
-        }
-        if (data['barcode'] != null) {
-          existingBarcodes[data['barcode'] as String] = doc.id;
-        }
-      }
+        final success = await _usdaSyncService.syncToGoogleSheets(maxProducts: 500);
 
-      _syncProgress = 0.5;
-      _syncStatus = 'Обновление базы данных...';
-      notifyListeners();
-
-      final batch = _firestore.batch();
-      int addedCount = 0;
-      int updatedCount = 0;
-
-      for (int i = 0; i < sheetProducts.length; i++) {
-        final product = sheetProducts[i];
-        
-        if (i % 20 == 0) {
-          _syncProgress = 0.5 + (0.4 * (i / sheetProducts.length));
-          _syncStatus = 'Обработано ${i + 1} из ${sheetProducts.length}';
+        if (!success) {
+          _error = 'Ошибка загрузки данных из USDA';
+          _isSyncing = false;
           notifyListeners();
+          return;
         }
 
-        String? existingId;
-        
-        if (product.barcode != null && existingBarcodes.containsKey(product.barcode)) {
-          existingId = existingBarcodes[product.barcode];
-        } else if (existingProducts.containsKey(product.googleSheetsId)) {
-          existingId = existingProducts[product.googleSheetsId];
+        _syncProgress = 0.5;
+        _syncStatus = 'Данные USDA загружены в таблицу. Обновление локальной базы...';
+        notifyListeners();
+
+        await Future.delayed(const Duration(seconds: 2));
+
+        final updatedSheetProducts = await _sheetsService.fetchProducts();
+
+        if (updatedSheetProducts.isEmpty) {
+          _error = 'Не удалось загрузить данные из USDA';
+          _isSyncing = false;
+          notifyListeners();
+          return;
         }
-        
-        if (existingId != null) {
-          final docRef = _firestore.collection('products').doc(existingId);
-          batch.update(docRef, product.toFirestore());
-          updatedCount++;
-        } else {
-          final docRef = _firestore.collection('products').doc();
-          batch.set(docRef, product.toFirestore());
-          addedCount++;
-        }
+
+        return await _syncProductsToFirestore(updatedSheetProducts);
       }
 
-      _syncProgress = 0.9;
-      _syncStatus = 'Сохранение изменений...';
+      return await _syncProductsToFirestore(sheetProducts);
+    } catch (e) {
+      _error = 'Ошибка синхронизации: $e';
+      debugPrint(_error);
+    } finally {
+      _isSyncing = false;
+      _syncProgress = 0.0;
+      _syncStatus = '';
       notifyListeners();
-      
-      await batch.commit();
-      
-      _lastSync = DateTime.now();
-      await _saveLastSyncTime();
+    }
+  }
 
-      _syncProgress = 0.95;
-      _syncStatus = 'Загрузка обновленных данных...';
-      notifyListeners();
+  Future<void> _syncProductsToFirestore(List<Product> sheetProducts) async {
+    _syncProgress = 0.6;
+    _syncStatus = 'Получено ${sheetProducts.length} продуктов';
+    notifyListeners();
 
-      final snapshot = await _firestore
-          .collection('products')
-          .orderBy('name')
-          .get();
+    final existingSnapshot = await _firestore.collection('products').get();
+    final existingProducts = <String, String>{};
+    final existingBarcodes = <String, String>{};
 
-      _products = snapshot.docs
-          .map((doc) => Product.fromFirestore(doc))
-          .toList();
+    for (var doc in existingSnapshot.docs) {
+      final data = doc.data();
+      if (data['googleSheetsId'] != null) {
+        existingProducts[data['googleSheetsId'] as String] = doc.id;
+      }
+      if (data['barcode'] != null) {
+        existingBarcodes[data['barcode'] as String] = doc.id;
+      }
+    }
 
-      // Save to local SQLite cache
-      final localDb = LocalDatabaseService();
-      final productsForCache = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'name': data['name'],
-          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
-          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
-          'fatPer100g': data['fatPer100g'],
-          'carbsPer100g': data['carbsPer100g'],
-          'caloriesPer100g': data['caloriesPer100g'],
-          'category': data['category'] ?? 'other',
-          'source': data['source'],
-          'barcode': data['barcode'],
-          'googleSheetsId': data['googleSheetsId'],
-          'notes': data['notes'],
-          'createdBy': data['createdBy'],
-          'isUserCreated': data['isUserCreated'] ?? false,
-        };
-      }).toList();
+    _syncProgress = 0.7;
+    _syncStatus = 'Обновление базы данных...';
+    notifyListeners();
 
-      await localDb.cacheProducts(productsForCache);
-      debugPrint('✅ Cached ${productsForCache.length} products to local storage');
+    final batch = _firestore.batch();
+    int addedCount = 0;
+    int updatedCount = 0;
 
-      _syncProgress = 1.0;
-      _syncStatus = 'Синхронизация завершена';
+    for (int i = 0; i < sheetProducts.length; i++) {
+      final product = sheetProducts[i];
 
-      debugPrint('✅ Sync completed: added $addedCount, updated $updatedCount products');
+      if (i % 20 == 0) {
+        _syncProgress = 0.7 + (0.2 * (i / sheetProducts.length));
+        _syncStatus = 'Обработано ${i + 1} из ${sheetProducts.length}';
+        notifyListeners();
+      }
 
       await Future.delayed(const Duration(milliseconds: 500));
   }
