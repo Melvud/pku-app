@@ -267,6 +267,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
+  String _getDaysWord(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'день';
+    } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
+      return 'дня';
+    } else {
+      return 'дней';
+    }
+  }
+
   void _showExportDialog() {
     showModalBottomSheet(
       context: context,
@@ -465,6 +475,71 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             else if (_stats == null)
               const SliverFillRemaining(
                 child: Center(child: Text('Нет данных за выбранный месяц')),
+              )
+            else if ((_stats!['activeDays'] as int? ?? 0) < 3)
+              SliverFillRemaining(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 80,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Недостаточно данных',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Отследите хотя бы 3 дня, чтобы увидеть статистику.\nУ вас сейчас: ${_stats!['activeDays']} ${_getDaysWord(_stats!['activeDays'] as int)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 32,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Добавляйте записи в дневник каждый день, чтобы получить полезную статистику о вашем питании',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               )
             else
               SliverFillRemaining(
@@ -953,7 +1028,7 @@ class _ModernSummaryCard extends StatelessWidget {
                 ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 8),
           Text(
             title,
             style: TextStyle(
@@ -972,7 +1047,7 @@ class _ModernSummaryCard extends StatelessWidget {
                 child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -980,13 +1055,13 @@ class _ModernSummaryCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: 2),
               Padding(
-                padding: const EdgeInsets.only(bottom: 3),
+                padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     color: Colors.grey.shade600,
                   ),
                   maxLines: 1,
@@ -995,11 +1070,11 @@ class _ModernSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 8,
               color: Colors.grey.shade600,
             ),
             maxLines: 1,
@@ -1168,11 +1243,19 @@ class _ModernPheChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 45,
+                reservedSize: 50,
+                interval: maxY / 5,
                 getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                  if (value == meta.max || value == meta.min) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text(
+                      value.toInt().toString(),
+                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      textAlign: TextAlign.right,
+                    ),
                   );
                 },
               ),
@@ -1180,13 +1263,15 @@ class _ModernPheChart extends StatelessWidget {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize: 30,
                 interval: 5,
                 getTitlesWidget: (value, meta) {
+                  if (value == 0) return const SizedBox.shrink();
                   return Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       value.toInt().toString(),
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     ),
                   );
                 },
@@ -1551,11 +1636,19 @@ class _WeeklyComparisonChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 45,
+                reservedSize: 50,
+                interval: maxY / 5,
                 getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                  if (value == meta.max || value == meta.min) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text(
+                      value.toInt().toString(),
+                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      textAlign: TextAlign.right,
+                    ),
                   );
                 },
               ),
@@ -1563,12 +1656,13 @@ class _WeeklyComparisonChart extends StatelessWidget {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize: 30,
                 getTitlesWidget: (value, meta) {
                   return Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      'Нед ${value.toInt() + 1}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      'Н${value.toInt() + 1}',
+                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     ),
                   );
                 },
