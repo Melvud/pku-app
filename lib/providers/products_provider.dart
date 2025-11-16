@@ -7,6 +7,7 @@ import '../models/product.dart';
 import '../services/google_sheets_service.dart';
 import '../services/multi_source_barcode_service.dart';
 import '../services/local_database_service.dart';
+import '../services/usda_service.dart';
 
 class ProductsProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -387,12 +388,41 @@ class ProductsProvider with ChangeNotifier {
       notifyListeners();
 
       final sheetProducts = await _sheetsService.fetchProducts();
-      
+
+      // Если в Google Sheets нет данных, загружаем из USDA
       if (sheetProducts.isEmpty) {
-        _error = 'Нет данных в таблице';
-        _isSyncing = false;
+        _syncProgress = 0.3;
+        _syncStatus = 'Google Sheets пуста, загрузка данных из USDA...';
         notifyListeners();
-        return;
+
+        try {
+          final usdaService = USDAService();
+          final usdaProducts = await usdaService.getAllProducts(
+            pageSize: 200,
+            maxPages: 5, // Загрузим первые 1000 продуктов
+            dataTypes: ['Branded', 'SR Legacy', 'Foundation'],
+          );
+
+          if (usdaProducts.isEmpty) {
+            _error = 'Нет данных ни в Google Sheets, ни в USDA';
+            _isSyncing = false;
+            notifyListeners();
+            return;
+          }
+
+          _syncProgress = 0.5;
+          _syncStatus = 'Получено ${usdaProducts.length} продуктов из USDA';
+          notifyListeners();
+
+          // Сохраняем продукты из USDA напрямую в Firestore
+          await _saveProductsToFirestore(usdaProducts);
+          return;
+        } catch (e) {
+          _error = 'Ошибка загрузки из USDA: $e';
+          _isSyncing = false;
+          notifyListeners();
+          return;
+        }
       }
 
       _syncProgress = 0.4;
@@ -641,5 +671,98 @@ class ProductsProvider with ChangeNotifier {
   List<Product> filterByCategory(String category) {
     if (category.isEmpty || category == 'all') return _products;
     return _products.where((p) => p.category == category).toList();
+  }
+
+  /// Сохранение продуктов из USDA напрямую в Firestore
+  Future<void> _saveProductsToFirestore(List<Product> products) async {
+    try {
+      _syncProgress = 0.6;
+      _syncStatus = 'Сохранение ${products.length} продуктов в базу данных...';
+      notifyListeners();
+
+      final batch = _firestore.batch();
+      int batchCount = 0;
+
+      for (int i = 0; i < products.length; i++) {
+        final product = products[i];
+
+        if (i % 50 == 0) {
+          _syncProgress = 0.6 + (0.3 * (i / products.length));
+          _syncStatus = 'Сохранено ${i} из ${products.length} продуктов...';
+          notifyListeners();
+        }
+
+        final docRef = _firestore.collection('products').doc();
+        batch.set(docRef, product.toFirestore());
+        batchCount++;
+
+        // Firestore batch limit is 500 operations
+        if (batchCount >= 450) {
+          await batch.commit();
+          batchCount = 0;
+        }
+      }
+
+      // Commit remaining operations
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      _lastSync = DateTime.now();
+      await _saveLastSyncTime();
+
+      _syncProgress = 0.95;
+      _syncStatus = 'Загрузка обновленных данных...';
+      notifyListeners();
+
+      // Reload products
+      final snapshot = await _firestore
+          .collection('products')
+          .orderBy('name')
+          .get();
+
+      _products = snapshot.docs
+          .map((doc) => Product.fromFirestore(doc))
+          .toList();
+
+      // Save to local cache
+      final localDb = LocalDatabaseService();
+      final productsForCache = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'],
+          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
+          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
+          'fatPer100g': data['fatPer100g'],
+          'carbsPer100g': data['carbsPer100g'],
+          'caloriesPer100g': data['caloriesPer100g'],
+          'category': data['category'] ?? 'other',
+          'source': data['source'],
+          'barcode': data['barcode'],
+          'googleSheetsId': data['googleSheetsId'],
+          'notes': data['notes'],
+          'createdBy': data['createdBy'],
+          'isUserCreated': data['isUserCreated'] ?? false,
+        };
+      }).toList();
+
+      await localDb.cacheProducts(productsForCache);
+
+      _syncProgress = 1.0;
+      _syncStatus = 'Синхронизация завершена';
+
+      debugPrint('✅ Successfully saved ${products.length} products from USDA');
+
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      debugPrint('Error saving USDA products: $e');
+      rethrow;
+    } finally {
+      _isSyncing = false;
+      _syncProgress = 0.0;
+      _syncStatus = '';
+      notifyListeners();
+    }
   }
 }

@@ -387,4 +387,116 @@ class DiaryProvider with ChangeNotifier {
       return {};
     }
   }
+
+  // Get statistics for a date range
+  Future<Map<String, dynamic>> getDateRangeStats(DateTime startDate, DateTime endDate) async {
+    if (_auth.currentUser == null) return {};
+
+    try {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+      final snapshot = await _firestore
+          .collection('diary_entries')
+          .where('userId', isEqualTo: _auth.currentUser!.uid)
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .get();
+
+      final entries = snapshot.docs
+          .map((doc) => DiaryEntry.fromFirestore(doc))
+          .toList();
+
+      // Group by date
+      final Map<String, List<DiaryEntry>> dailyEntries = {};
+      final Map<String, List<DiaryEntry>> monthlyEntries = {};
+
+      for (var entry in entries) {
+        final dateKey = '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}-${entry.timestamp.day.toString().padLeft(2, '0')}';
+        final monthKey = '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}';
+
+        dailyEntries.putIfAbsent(dateKey, () => []);
+        dailyEntries[dateKey]!.add(entry);
+
+        monthlyEntries.putIfAbsent(monthKey, () => []);
+        monthlyEntries[monthKey]!.add(entry);
+      }
+
+      // Calculate daily stats
+      final List<Map<String, dynamic>> dailyStats = [];
+      DateTime current = start;
+      while (current.isBefore(end) || current.isAtSameMomentAs(end)) {
+        final dateKey = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+        final dayEntries = dailyEntries[dateKey] ?? [];
+
+        dailyStats.add({
+          'date': current,
+          'day': current.day,
+          'month': current.month,
+          'year': current.year,
+          'phe': dayEntries.fold(0.0, (sum, e) => sum + e.pheInPortion),
+          'protein': dayEntries.fold(0.0, (sum, e) => sum + e.proteinInPortion),
+          'fat': dayEntries.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
+          'carbs': dayEntries.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
+          'calories': dayEntries.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
+          'entriesCount': dayEntries.length,
+        });
+
+        current = current.add(const Duration(days: 1));
+      }
+
+      // Calculate monthly stats
+      final List<Map<String, dynamic>> monthlyStats = [];
+      for (var monthKey in monthlyEntries.keys.toList()..sort()) {
+        final parts = monthKey.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final monthEntriesData = monthlyEntries[monthKey]!;
+
+        final daysInMonth = DateTime(year, month + 1, 0).day;
+
+        monthlyStats.add({
+          'year': year,
+          'month': month,
+          'totalPhe': monthEntriesData.fold(0.0, (sum, e) => sum + e.pheInPortion),
+          'totalProtein': monthEntriesData.fold(0.0, (sum, e) => sum + e.proteinInPortion),
+          'totalFat': monthEntriesData.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
+          'totalCarbs': monthEntriesData.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
+          'totalCalories': monthEntriesData.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
+          'avgPhePerDay': monthEntriesData.fold(0.0, (sum, e) => sum + e.pheInPortion) / daysInMonth,
+          'entriesCount': monthEntriesData.length,
+        });
+      }
+
+      final totalPhe = entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
+      final totalProtein = entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
+      final totalFat = entries.fold(0.0, (sum, entry) => sum + (entry.fatInPortion ?? 0));
+      final totalCarbs = entries.fold(0.0, (sum, entry) => sum + (entry.carbsInPortion ?? 0));
+      final totalCalories = entries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0));
+      final daysDifference = end.difference(start).inDays + 1;
+      final activeDays = dailyEntries.length;
+
+      return {
+        'startDate': start,
+        'endDate': end,
+        'totalPhe': totalPhe,
+        'totalProtein': totalProtein,
+        'totalFat': totalFat,
+        'totalCarbs': totalCarbs,
+        'totalCalories': totalCalories,
+        'avgPhePerDay': daysDifference > 0 ? totalPhe / daysDifference : 0,
+        'avgProteinPerDay': daysDifference > 0 ? totalProtein / daysDifference : 0,
+        'avgFatPerDay': daysDifference > 0 ? totalFat / daysDifference : 0,
+        'avgCarbsPerDay': daysDifference > 0 ? totalCarbs / daysDifference : 0,
+        'avgCaloriesPerDay': daysDifference > 0 ? totalCalories / daysDifference : 0,
+        'activeDays': activeDays,
+        'totalDays': daysDifference,
+        'dailyStats': dailyStats,
+        'monthlyStats': monthlyStats,
+      };
+    } catch (e) {
+      debugPrint('❌ Error getting date range stats: $e');
+      return {};
+    }
+  }
 }
