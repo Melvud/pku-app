@@ -5,7 +5,6 @@ import '../../providers/products_provider.dart';
 import '../../models/product.dart';
 import '../../models/diary_entry.dart';
 import 'edit_product_portion_screen.dart';
-import 'qr_scanner_screen.dart';
 
 class ProductSelectionScreen extends StatefulWidget {
   final MealType mealType;
@@ -40,22 +39,6 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _navigateToQRScanner() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => QRScannerScreen(mealType: widget.mealType),
-      ),
-    );
-
-    if (result != null && result is String) {
-      setState(() {
-        _searchController.text = result;
-        _searchQuery = result;
-      });
-    }
   }
 
   void _navigateToEditProduct(Product product) {
@@ -160,36 +143,24 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Поиск продуктов...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                        ),
-                        onChanged: (value) {
-                          setState(() => _searchQuery = value);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      icon: const Icon(Icons.qr_code_scanner),
-                      onPressed: _navigateToQRScanner,
-                      tooltip: 'Сканировать QR',
-                    ),
-                  ],
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Поиск продуктов...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
                 ),
               ),
 

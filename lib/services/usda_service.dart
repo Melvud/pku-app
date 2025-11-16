@@ -104,13 +104,15 @@ class USDAService {
   Future<List<Product>> getAllProducts({
     int pageSize = 200,
     int maxPages = 10,
+    int startPage = 0,
     List<String> dataTypes = const ['Branded'],
   }) async {
     final allProducts = <Product>[];
 
     try {
       for (int page = 1; page <= maxPages; page++) {
-        print('📥 Fetching USDA page $page of $maxPages...');
+        final actualPage = startPage + page;
+        print('📥 Fetching USDA page $actualPage...');
 
         final response = await http.post(
           Uri.parse('$_baseUrl/foods/list?api_key=$_apiKey'),
@@ -118,7 +120,7 @@ class USDAService {
           body: json.encode({
             'dataType': dataTypes,
             'pageSize': pageSize,
-            'pageNumber': page,
+            'pageNumber': actualPage,
           }),
         );
 

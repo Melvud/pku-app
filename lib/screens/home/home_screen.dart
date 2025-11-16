@@ -9,7 +9,6 @@ import '../../models/diary_entry.dart';
 import '../../models/meal_session.dart';
 import '../products/product_selection_screen.dart';
 import '../products/add_custom_product_screen.dart';
-import '../products/qr_scanner_screen.dart';
 import '../statistics/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
