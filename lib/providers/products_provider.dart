@@ -7,7 +7,7 @@ import '../models/product.dart';
 import '../services/google_sheets_service.dart';
 import '../services/multi_source_barcode_service.dart';
 import '../services/local_database_service.dart';
-import '../services/usda_service.dart';
+import '../services/usda_sync_service.dart';
 
 class ProductsProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -389,42 +389,80 @@ class ProductsProvider with ChangeNotifier {
 
       final sheetProducts = await _sheetsService.fetchProducts();
 
-      // Если в Google Sheets нет данных, загружаем из USDA
+      // Если в Google Sheets нет данных, загружаем из USDA в Google Sheets
       if (sheetProducts.isEmpty) {
         _syncProgress = 0.3;
-        _syncStatus = 'Google Sheets пуста, загрузка данных из USDA...';
+        _syncStatus = 'Google Sheets пуста, начинаем загрузку из USDA...';
         notifyListeners();
 
         try {
-          final usdaService = USDAService();
-          final usdaProducts = await usdaService.getAllProducts(
-            pageSize: 200,
-            maxPages: 5, // Загрузим первые 1000 продуктов
-            dataTypes: ['Branded', 'SR Legacy', 'Foundation'],
+          final usdaSyncService = USDASyncService();
+
+          _syncProgress = 0.4;
+          _syncStatus = 'Загрузка базы данных USDA (это может занять несколько минут)...';
+          notifyListeners();
+
+          // Загружаем всю базу USDA в Google Sheets
+          // Рекомендуется начать с 10000 продуктов для первоначального наполнения
+          final success = await usdaSyncService.syncToGoogleSheets(
+            maxProducts: 10000, // Можно увеличить до 50000+ если нужно больше
+            onProgress: (current, total, status) {
+              _syncProgress = 0.4 + (0.4 * (current / total));
+              _syncStatus = status;
+              notifyListeners();
+            },
           );
 
-          if (usdaProducts.isEmpty) {
-            _error = 'Нет данных ни в Google Sheets, ни в USDA';
+          if (!success) {
+            _error = 'Не удалось загрузить данные из USDA в Google Sheets';
             _isSyncing = false;
             notifyListeners();
             return;
           }
 
-          _syncProgress = 0.5;
-          _syncStatus = 'Получено ${usdaProducts.length} продуктов из USDA';
+          _syncProgress = 0.8;
+          _syncStatus = 'Данные загружены в Google Sheets, синхронизация с приложением...';
           notifyListeners();
 
-          // Сохраняем продукты из USDA напрямую в Firestore
-          await _saveProductsToFirestore(usdaProducts);
-          return;
+          // Теперь загружаем данные из Google Sheets как обычно
+          // Продолжаем выполнение, чтобы загрузить данные из Sheets
         } catch (e) {
           _error = 'Ошибка загрузки из USDA: $e';
           _isSyncing = false;
           notifyListeners();
           return;
         }
+
+        // Перезагружаем данные из Google Sheets после успешной загрузки
+        final reloadedSheetProducts = await _sheetsService.fetchProducts();
+
+        if (reloadedSheetProducts.isEmpty) {
+          _error = 'Данные не появились в Google Sheets. Проверьте настройки Web App.';
+          _isSyncing = false;
+          notifyListeners();
+          return;
+        }
+
+        // Используем перезагруженные данные для дальнейшей обработки
+        await _processSyncedProducts(reloadedSheetProducts);
+        return;
       }
 
+      await _processSyncedProducts(sheetProducts);
+    } catch (e) {
+      _error = 'Ошибка синхронизации: $e';
+      debugPrint(_error);
+    } finally {
+      _isSyncing = false;
+      _syncProgress = 0.0;
+      _syncStatus = '';
+      notifyListeners();
+    }
+  }
+
+  /// Обработка продуктов из Google Sheets и сохранение в Firestore
+  Future<void> _processSyncedProducts(List<Product> sheetProducts) async {
+    try {
       _syncProgress = 0.4;
       _syncStatus = 'Получено ${sheetProducts.length} продуктов';
       notifyListeners();
@@ -532,16 +570,6 @@ class ProductsProvider with ChangeNotifier {
       debugPrint('✅ Sync completed: added $addedCount, updated $updatedCount products');
 
       await Future.delayed(const Duration(milliseconds: 500));
-      
-    } catch (e) {
-      _error = 'Ошибка синхронизации: $e';
-      debugPrint(_error);
-    } finally {
-      _isSyncing = false;
-      _syncProgress = 0.0;
-      _syncStatus = '';
-      notifyListeners();
-    }
   }
 
   Future<void> addProduct(Product product) async {
@@ -671,98 +699,5 @@ class ProductsProvider with ChangeNotifier {
   List<Product> filterByCategory(String category) {
     if (category.isEmpty || category == 'all') return _products;
     return _products.where((p) => p.category == category).toList();
-  }
-
-  /// Сохранение продуктов из USDA напрямую в Firestore
-  Future<void> _saveProductsToFirestore(List<Product> products) async {
-    try {
-      _syncProgress = 0.6;
-      _syncStatus = 'Сохранение ${products.length} продуктов в базу данных...';
-      notifyListeners();
-
-      final batch = _firestore.batch();
-      int batchCount = 0;
-
-      for (int i = 0; i < products.length; i++) {
-        final product = products[i];
-
-        if (i % 50 == 0) {
-          _syncProgress = 0.6 + (0.3 * (i / products.length));
-          _syncStatus = 'Сохранено ${i} из ${products.length} продуктов...';
-          notifyListeners();
-        }
-
-        final docRef = _firestore.collection('products').doc();
-        batch.set(docRef, product.toFirestore());
-        batchCount++;
-
-        // Firestore batch limit is 500 operations
-        if (batchCount >= 450) {
-          await batch.commit();
-          batchCount = 0;
-        }
-      }
-
-      // Commit remaining operations
-      if (batchCount > 0) {
-        await batch.commit();
-      }
-
-      _lastSync = DateTime.now();
-      await _saveLastSyncTime();
-
-      _syncProgress = 0.95;
-      _syncStatus = 'Загрузка обновленных данных...';
-      notifyListeners();
-
-      // Reload products
-      final snapshot = await _firestore
-          .collection('products')
-          .orderBy('name')
-          .get();
-
-      _products = snapshot.docs
-          .map((doc) => Product.fromFirestore(doc))
-          .toList();
-
-      // Save to local cache
-      final localDb = LocalDatabaseService();
-      final productsForCache = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'name': data['name'],
-          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
-          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
-          'fatPer100g': data['fatPer100g'],
-          'carbsPer100g': data['carbsPer100g'],
-          'caloriesPer100g': data['caloriesPer100g'],
-          'category': data['category'] ?? 'other',
-          'source': data['source'],
-          'barcode': data['barcode'],
-          'googleSheetsId': data['googleSheetsId'],
-          'notes': data['notes'],
-          'createdBy': data['createdBy'],
-          'isUserCreated': data['isUserCreated'] ?? false,
-        };
-      }).toList();
-
-      await localDb.cacheProducts(productsForCache);
-
-      _syncProgress = 1.0;
-      _syncStatus = 'Синхронизация завершена';
-
-      debugPrint('✅ Successfully saved ${products.length} products from USDA');
-
-      await Future.delayed(const Duration(milliseconds: 500));
-    } catch (e) {
-      debugPrint('Error saving USDA products: $e');
-      rethrow;
-    } finally {
-      _isSyncing = false;
-      _syncProgress = 0.0;
-      _syncStatus = '';
-      notifyListeners();
-    }
   }
 }

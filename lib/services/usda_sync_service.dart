@@ -14,28 +14,76 @@ class USDASyncService {
   Future<bool> syncToGoogleSheets({
     int maxProducts = 1000,
     String? webAppUrl,
+    Function(int current, int total, String status)? onProgress,
   }) async {
     try {
       print('🔄 Starting USDA sync to Google Sheets...');
 
-      // Получаем продукты из USDA
-      final products = await _usdaService.getAllProducts(
-        pageSize: 200,
-        maxPages: (maxProducts / 200).ceil(),
-        dataTypes: ['Branded', 'SR Legacy'],
-      );
-
-      if (products.isEmpty) {
-        print('❌ No products to sync');
-        return false;
-      }
-
-      print('📦 Got ${products.length} products from USDA');
-
-      final rows = products.map((product) => _productToSheetRow(product)).toList();
       final url = webAppUrl ?? _webAppUrl;
 
-      return await _sendToWebApp(url, rows);
+      // Получаем продукты из USDA постепенно и отправляем пакетами
+      final batchSize = 500; // Отправляем по 500 продуктов за раз
+      final pageSize = 200;
+      final totalPages = (maxProducts / pageSize).ceil();
+
+      int totalProcessed = 0;
+      int totalSynced = 0;
+
+      for (int page = 0; page < totalPages; page++) {
+        onProgress?.call(page + 1, totalPages, 'Загрузка страницы ${page + 1} из $totalPages из USDA...');
+        print('📥 Fetching page ${page + 1}/$totalPages from USDA...');
+
+        // Получаем одну страницу продуктов
+        final products = await _usdaService.getAllProducts(
+          pageSize: pageSize,
+          maxPages: 1,
+          startPage: page,
+          dataTypes: ['Branded', 'SR Legacy', 'Foundation'],
+        );
+
+        if (products.isEmpty) {
+          print('⚠️ No more products available');
+          break;
+        }
+
+        print('📦 Got ${products.length} products from USDA (total: ${totalProcessed + products.length})');
+
+        // Разбиваем на пакеты для отправки
+        for (int i = 0; i < products.length; i += batchSize) {
+          final end = (i + batchSize < products.length) ? i + batchSize : products.length;
+          final batch = products.sublist(i, end);
+
+          onProgress?.call(
+            page + 1,
+            totalPages,
+            'Отправка ${i + batch.length} из ${totalProcessed + products.length} продуктов в Google Sheets...'
+          );
+          print('📤 Sending batch ${(i / batchSize).floor() + 1} (${batch.length} products)...');
+
+          final rows = batch.map((product) => _productToSheetRow(product)).toList();
+
+          final success = await _sendToWebApp(url, rows);
+          if (!success) {
+            print('❌ Failed to sync batch, continuing...');
+            // Продолжаем даже если один пакет не удался
+          } else {
+            totalSynced += batch.length;
+          }
+
+          // Небольшая пауза между пакетами, чтобы не перегружать Google Apps Script
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+
+        totalProcessed += products.length;
+
+        if (totalProcessed >= maxProducts) {
+          print('✅ Reached target of $maxProducts products');
+          break;
+        }
+      }
+
+      print('✅ Sync completed: processed $totalProcessed products, synced $totalSynced to Google Sheets');
+      return totalSynced > 0;
     } catch (e) {
       print('❌ Error syncing to Google Sheets: $e');
       return false;
