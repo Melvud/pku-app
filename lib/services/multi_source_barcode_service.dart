@@ -2,13 +2,45 @@
 import '../models/product.dart';
 import 'open_food_facts_service.dart';
 import 'barcode_lookup_service.dart';
+import 'fatsecret_service.dart';
+import 'usda_service.dart';
 
 class MultiSourceBarcodeService {
   final OpenFoodFactsService _openFoodFacts = OpenFoodFactsService();
   final BarcodeLookupService _barcodeLookup = BarcodeLookupService();
+  final FatSecretService _fatSecret = FatSecretService();
+  final USDAService _usda = USDAService();
 
   Future<ProductSearchResult> searchProductByBarcode(String barcode) async {
-    // 1. Пробуем Open Food Facts (полные данные о пищевой ценности)
+    // 1. Пробуем FatSecret (наиболее полные данные о пищевой ценности)
+    try {
+      final fatSecretProduct = await _fatSecret.getProductByBarcode(barcode);
+      if (fatSecretProduct != null) {
+        return ProductSearchResult(
+          product: fatSecretProduct,
+          source: 'FatSecret',
+          hasNutritionData: true,
+        );
+      }
+    } catch (e) {
+      print('FatSecret failed: $e');
+    }
+
+    // 2. Пробуем USDA FoodData Central (обширная база данных США)
+    try {
+      final usdaProduct = await _usda.getProductByBarcode(barcode);
+      if (usdaProduct != null) {
+        return ProductSearchResult(
+          product: usdaProduct,
+          source: 'USDA',
+          hasNutritionData: true,
+        );
+      }
+    } catch (e) {
+      print('USDA failed: $e');
+    }
+
+    // 3. Пробуем Open Food Facts (международная база данных)
     try {
       final offProduct = await _openFoodFacts.getProductByBarcode(barcode);
       if (offProduct != null) {
@@ -22,7 +54,7 @@ class MultiSourceBarcodeService {
       print('Open Food Facts failed: $e');
     }
 
-    // 2. Пробуем UPCitemdb (только название, без пищевой ценности)
+    // 4. Пробуем UPCitemdb (только название, без пищевой ценности)
     try {
       final upcProduct = await _barcodeLookup.getProductByBarcode(barcode);
       if (upcProduct != null) {
@@ -36,7 +68,7 @@ class MultiSourceBarcodeService {
       print('UPCitemdb failed: $e');
     }
 
-    // 3. Ничего не найдено - возвращаем заготовку для ручного ввода
+    // 5. Ничего не найдено - возвращаем заготовку для ручного ввода
     return ProductSearchResult(
       product: Product(
         id: '',

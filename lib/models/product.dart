@@ -142,6 +142,128 @@ class Product {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
+  factory Product.fromFatSecret(Map<String, dynamic> data, String barcode) {
+    final food = data['food'] as Map<String, dynamic>? ?? data;
+
+    final servings = food['servings'] as Map<String, dynamic>?;
+    final serving = servings != null && servings['serving'] != null
+        ? (servings['serving'] is List
+            ? (servings['serving'] as List).first as Map<String, dynamic>
+            : servings['serving'] as Map<String, dynamic>)
+        : <String, dynamic>{};
+
+    final protein = _parseDouble(serving['protein']);
+    final fat = _parseDouble(serving['fat']);
+    final carbs = _parseDouble(serving['carbohydrate']);
+    final calories = _parseDouble(serving['calories']);
+
+    final estimatedPhe = protein * 50;
+
+    return Product(
+      id: '',
+      name: food['food_name'] ?? 'Неизвестный продукт',
+      category: _mapFatSecretCategory(food['food_type'] ?? ''),
+      proteinPer100g: protein,
+      pheMeasuredPer100g: null,
+      pheEstimatedPer100g: estimatedPhe,
+      fatPer100g: fat,
+      carbsPer100g: carbs,
+      caloriesPer100g: calories,
+      notes: 'Данные из FatSecret Platform',
+      source: 'FatSecret',
+      lastUpdated: DateTime.now(),
+      googleSheetsId: null,
+      barcode: barcode.isNotEmpty ? barcode : null,
+    );
+  }
+
+  factory Product.fromUSDA(Map<String, dynamic> data) {
+    final description = data['description'] as String? ??
+                       data['lowercaseDescription'] as String? ??
+                       'Неизвестный продукт';
+
+    final nutrients = data['foodNutrients'] as List<dynamic>? ?? [];
+
+    double protein = 0.0;
+    double fat = 0.0;
+    double carbs = 0.0;
+    double calories = 0.0;
+
+    for (var nutrient in nutrients) {
+      final nutrientData = nutrient is Map<String, dynamic> ? nutrient : {};
+      final nutrientId = nutrientData['nutrientId'] as int? ??
+                        nutrientData['nutrientNumber'] as int? ?? 0;
+      final value = _parseDouble(nutrientData['value']);
+
+      switch (nutrientId) {
+        case 1003:
+          protein = value;
+          break;
+        case 1004:
+          fat = value;
+          break;
+        case 1005:
+          carbs = value;
+          break;
+        case 1008:
+          calories = value;
+          break;
+      }
+    }
+
+    final estimatedPhe = protein * 50;
+    final barcode = data['gtinUpc'] as String?;
+
+    return Product(
+      id: '',
+      name: description,
+      category: _mapUSDACategory(data['foodCategory'] as String? ?? ''),
+      proteinPer100g: protein,
+      pheMeasuredPer100g: null,
+      pheEstimatedPer100g: estimatedPhe,
+      fatPer100g: fat > 0 ? fat : null,
+      carbsPer100g: carbs > 0 ? carbs : null,
+      caloriesPer100g: calories > 0 ? calories : null,
+      notes: 'Данные из USDA FoodData Central',
+      source: 'USDA',
+      lastUpdated: DateTime.now(),
+      googleSheetsId: null,
+      barcode: barcode,
+    );
+  }
+
+  static String _mapFatSecretCategory(String foodType) {
+    final lowerType = foodType.toLowerCase();
+    if (lowerType.contains('fruit')) {
+      return 'fruits';
+    } else if (lowerType.contains('vegetable')) {
+      return 'vegetables';
+    } else if (lowerType.contains('grain') || lowerType.contains('bread')) {
+      return 'grains';
+    }
+    return 'other';
+  }
+
+  static String _mapUSDACategory(String category) {
+    final lowerCategory = category.toLowerCase();
+    if (lowerCategory.contains('fruit')) {
+      return 'fruits';
+    } else if (lowerCategory.contains('vegetable')) {
+      return 'vegetables';
+    } else if (lowerCategory.contains('grain') ||
+               lowerCategory.contains('bread') ||
+               lowerCategory.contains('cereal')) {
+      return 'grains';
+    } else if (lowerCategory.contains('dairy') || lowerCategory.contains('milk')) {
+      return 'dairy';
+    } else if (lowerCategory.contains('meat') ||
+               lowerCategory.contains('poultry') ||
+               lowerCategory.contains('fish')) {
+      return 'protein';
+    }
+    return 'other';
+  }
+
   Product copyWith({
     String? id,
     String? name,
