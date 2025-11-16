@@ -6,8 +6,58 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:excel/excel.dart' as excel_lib;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
 
 class ExportService {
+  // Helper method to get Downloads directory
+  Future<Directory> _getDownloadsDirectory() async {
+    if (Platform.isAndroid) {
+      // Request storage permission
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        status = await Permission.storage.request();
+        if (!status.isGranted) {
+          // If still not granted, try with manageExternalStorage for Android 11+
+          if (await Permission.manageExternalStorage.request().isGranted) {
+            // Permission granted
+          }
+        }
+      }
+
+      // Use the public Downloads directory
+      // For Android, use /storage/emulated/0/Download
+      final directory = Directory('/storage/emulated/0/Download');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+      return directory;
+    } else {
+      // For iOS and other platforms, use app documents directory
+      return await getApplicationDocumentsDirectory();
+    }
+  }
+
+  // Helper method to load font for PDF
+  Future<pw.Font> _loadFont() async {
+    try {
+      // Download Roboto font which supports Cyrillic characters from Google Fonts
+      final response = await http.get(
+        Uri.parse('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'),
+      );
+
+      if (response.statusCode == 200) {
+        return pw.Font.ttf(response.bodyBytes.buffer.asByteData());
+      } else {
+        throw Exception('Failed to load font: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error loading font: $e');
+      rethrow;
+    }
+  }
+
   // Export to PDF
   Future<String?> exportToPDF({
     required Map<String, dynamic> stats,
@@ -18,6 +68,9 @@ class ExportService {
     try {
       final pdf = pw.Document();
       final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
+
+      // Load font that supports Cyrillic characters
+      final font = await _loadFont();
 
       // Add page
       pdf.addPage(
@@ -36,18 +89,20 @@ class ExportService {
                     style: pw.TextStyle(
                       fontSize: 24,
                       fontWeight: pw.FontWeight.bold,
+                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 8),
                   pw.Text(
                     DateFormat('MMMM yyyy', 'ru').format(month),
-                    style: const pw.TextStyle(fontSize: 16),
+                    style: pw.TextStyle(fontSize: 16, font: font),
                   ),
                   pw.Text(
                     'Пользователь: $userName',
                     style: pw.TextStyle(
                       fontSize: 12,
                       color: PdfColors.grey700,
+                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 4),
@@ -56,6 +111,7 @@ class ExportService {
                     style: pw.TextStyle(
                       fontSize: 10,
                       color: PdfColors.grey600,
+                      font: font,
                     ),
                   ),
                 ],
@@ -69,6 +125,7 @@ class ExportService {
               style: pw.TextStyle(
                 fontSize: 18,
                 fontWeight: pw.FontWeight.bold,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 12),
@@ -81,14 +138,14 @@ class ExportService {
               child: pw.Column(
                 children: [
                   _buildSummaryRow('Всего Phe',
-                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг'),
+                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Среднее Phe в день',
-                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'),
+                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг'),
+                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}'),
+                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}', font),
                 ],
               ),
             ),
@@ -104,16 +161,16 @@ class ExportService {
               child: pw.Column(
                 children: [
                   _buildSummaryRow('Белок',
-                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Жиры',
-                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Углеводы',
-                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Калории',
-                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)'),
+                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)', font),
                 ],
               ),
             ),
@@ -125,6 +182,7 @@ class ExportService {
               style: pw.TextStyle(
                 fontSize: 18,
                 fontWeight: pw.FontWeight.bold,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 12),
@@ -142,11 +200,11 @@ class ExportService {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
-                    _buildTableCell('День', isHeader: true),
-                    _buildTableCell('Phe (мг)', isHeader: true),
-                    _buildTableCell('Белок (г)', isHeader: true),
-                    _buildTableCell('Калории', isHeader: true),
-                    _buildTableCell('Записей', isHeader: true),
+                    _buildTableCell('День', font, isHeader: true),
+                    _buildTableCell('Phe (мг)', font, isHeader: true),
+                    _buildTableCell('Белок (г)', font, isHeader: true),
+                    _buildTableCell('Калории', font, isHeader: true),
+                    _buildTableCell('Записей', font, isHeader: true),
                   ],
                 ),
                 // Data rows
@@ -169,11 +227,11 @@ class ExportService {
                   return pw.TableRow(
                     decoration: pw.BoxDecoration(color: color),
                     children: [
-                      _buildTableCell('$day'),
-                      _buildTableCell(phe.toStringAsFixed(0)),
-                      _buildTableCell(protein.toStringAsFixed(1)),
-                      _buildTableCell(calories.toStringAsFixed(0)),
-                      _buildTableCell('$entries'),
+                      _buildTableCell('$day', font),
+                      _buildTableCell(phe.toStringAsFixed(0), font),
+                      _buildTableCell(protein.toStringAsFixed(1), font),
+                      _buildTableCell(calories.toStringAsFixed(0), font),
+                      _buildTableCell('$entries', font),
                     ],
                   );
                 }),
@@ -188,23 +246,24 @@ class ExportService {
                 fontSize: 10,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.grey700,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 4),
             pw.Text(
               '• Цветовая индикация: зеленый - до 50% лимита, оранжевый - 50-80%, красный - выше 80%',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
             ),
             pw.Text(
               '• Дни без записей не включены в таблицу',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
             ),
           ],
         ),
       );
 
-      // Save file
-      final output = await getApplicationDocumentsDirectory();
+      // Save file to Downloads directory
+      final output = await _getDownloadsDirectory();
       final fileName = 'statistics_${DateFormat('yyyy-MM').format(month)}.pdf';
       final file = File('${output.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
@@ -356,17 +415,17 @@ class ExportService {
         row++;
       }
 
-      // Save file
-      final output = await getApplicationDocumentsDirectory();
+      // Save file to Downloads directory
+      final output = await _getDownloadsDirectory();
       final fileName = 'statistics_${DateFormat('yyyy-MM').format(month)}.xlsx';
       final file = File('${output.path}/$fileName');
-      
+
       final bytes = excel.encode();
       if (bytes != null) {
         await file.writeAsBytes(bytes);
         return file.path;
       }
-      
+
       return null;
     } catch (e) {
       debugPrint('Error exporting to Excel: $e');
@@ -375,23 +434,24 @@ class ExportService {
   }
 
   // Helper methods for PDF
-  pw.Widget _buildSummaryRow(String label, String value) {
+  pw.Widget _buildSummaryRow(String label, String value, pw.Font font) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text(label, style: const pw.TextStyle(fontSize: 12)),
+        pw.Text(label, style: pw.TextStyle(fontSize: 12, font: font)),
         pw.Text(
           value,
           style: pw.TextStyle(
             fontSize: 12,
             fontWeight: pw.FontWeight.bold,
+            font: font,
           ),
         ),
       ],
     );
   }
 
-  pw.Widget _buildTableCell(String text, {bool isHeader = false}) {
+  pw.Widget _buildTableCell(String text, pw.Font font, {bool isHeader = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(4),
       child: pw.Text(
@@ -399,6 +459,7 @@ class ExportService {
         style: pw.TextStyle(
           fontSize: isHeader ? 10 : 9,
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+          font: font,
         ),
         textAlign: pw.TextAlign.center,
       ),
@@ -418,6 +479,9 @@ class ExportService {
       final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
       final monthlyStats = stats['monthlyStats'] as List<Map<String, dynamic>>? ?? [];
 
+      // Load font that supports Cyrillic characters
+      final font = await _loadFont();
+
       // Add page
       pdf.addPage(
         pw.MultiPage(
@@ -435,18 +499,20 @@ class ExportService {
                     style: pw.TextStyle(
                       fontSize: 24,
                       fontWeight: pw.FontWeight.bold,
+                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 8),
                   pw.Text(
                     'Период: ${DateFormat('d MMMM yyyy', 'ru').format(startDate)} - ${DateFormat('d MMMM yyyy', 'ru').format(endDate)}',
-                    style: const pw.TextStyle(fontSize: 16),
+                    style: pw.TextStyle(fontSize: 16, font: font),
                   ),
                   pw.Text(
                     'Пользователь: $userName',
                     style: pw.TextStyle(
                       fontSize: 12,
                       color: PdfColors.grey700,
+                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 4),
@@ -455,6 +521,7 @@ class ExportService {
                     style: pw.TextStyle(
                       fontSize: 10,
                       color: PdfColors.grey600,
+                      font: font,
                     ),
                   ),
                 ],
@@ -468,6 +535,7 @@ class ExportService {
               style: pw.TextStyle(
                 fontSize: 18,
                 fontWeight: pw.FontWeight.bold,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 12),
@@ -480,14 +548,14 @@ class ExportService {
               child: pw.Column(
                 children: [
                   _buildSummaryRow('Всего Phe',
-                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг'),
+                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Среднее Phe в день',
-                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'),
+                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг'),
+                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}'),
+                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}', font),
                 ],
               ),
             ),
@@ -503,16 +571,16 @@ class ExportService {
               child: pw.Column(
                 children: [
                   _buildSummaryRow('Белок',
-                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Жиры',
-                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Углеводы',
-                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)'),
+                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
                   pw.SizedBox(height: 8),
                   _buildSummaryRow('Калории',
-                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)'),
+                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)', font),
                 ],
               ),
             ),
@@ -525,6 +593,7 @@ class ExportService {
                 style: pw.TextStyle(
                   fontSize: 18,
                   fontWeight: pw.FontWeight.bold,
+                  font: font,
                 ),
               ),
               pw.SizedBox(height: 12),
@@ -542,11 +611,11 @@ class ExportService {
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                     children: [
-                      _buildTableCell('Месяц', isHeader: true),
-                      _buildTableCell('Phe (мг)', isHeader: true),
-                      _buildTableCell('Среднее/день', isHeader: true),
-                      _buildTableCell('Белок (г)', isHeader: true),
-                      _buildTableCell('Записей', isHeader: true),
+                      _buildTableCell('Месяц', font, isHeader: true),
+                      _buildTableCell('Phe (мг)', font, isHeader: true),
+                      _buildTableCell('Среднее/день', font, isHeader: true),
+                      _buildTableCell('Белок (г)', font, isHeader: true),
+                      _buildTableCell('Записей', font, isHeader: true),
                     ],
                   ),
                   // Data rows
@@ -569,11 +638,11 @@ class ExportService {
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(color: color),
                       children: [
-                        _buildTableCell(DateFormat('LLLL yyyy', 'ru').format(monthDate)),
-                        _buildTableCell(totalPhe.toStringAsFixed(0)),
-                        _buildTableCell(avgPhe.toStringAsFixed(0)),
-                        _buildTableCell(protein.toStringAsFixed(1)),
-                        _buildTableCell('$entries'),
+                        _buildTableCell(DateFormat('LLLL yyyy', 'ru').format(monthDate), font),
+                        _buildTableCell(totalPhe.toStringAsFixed(0), font),
+                        _buildTableCell(avgPhe.toStringAsFixed(0), font),
+                        _buildTableCell(protein.toStringAsFixed(1), font),
+                        _buildTableCell('$entries', font),
                       ],
                     );
                   }),
@@ -588,6 +657,7 @@ class ExportService {
               style: pw.TextStyle(
                 fontSize: 18,
                 fontWeight: pw.FontWeight.bold,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 12),
@@ -605,11 +675,11 @@ class ExportService {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
-                    _buildTableCell('Дата', isHeader: true),
-                    _buildTableCell('Phe (мг)', isHeader: true),
-                    _buildTableCell('Белок (г)', isHeader: true),
-                    _buildTableCell('Калории', isHeader: true),
-                    _buildTableCell('Записей', isHeader: true),
+                    _buildTableCell('Дата', font, isHeader: true),
+                    _buildTableCell('Phe (мг)', font, isHeader: true),
+                    _buildTableCell('Белок (г)', font, isHeader: true),
+                    _buildTableCell('Калории', font, isHeader: true),
+                    _buildTableCell('Записей', font, isHeader: true),
                   ],
                 ),
                 // Data rows
@@ -632,11 +702,11 @@ class ExportService {
                   return pw.TableRow(
                     decoration: pw.BoxDecoration(color: color),
                     children: [
-                      _buildTableCell(DateFormat('d MMM yyyy', 'ru').format(date)),
-                      _buildTableCell(phe.toStringAsFixed(0)),
-                      _buildTableCell(protein.toStringAsFixed(1)),
-                      _buildTableCell(calories.toStringAsFixed(0)),
-                      _buildTableCell('$entries'),
+                      _buildTableCell(DateFormat('d MMM yyyy', 'ru').format(date), font),
+                      _buildTableCell(phe.toStringAsFixed(0), font),
+                      _buildTableCell(protein.toStringAsFixed(1), font),
+                      _buildTableCell(calories.toStringAsFixed(0), font),
+                      _buildTableCell('$entries', font),
                     ],
                   );
                 }),
@@ -651,23 +721,24 @@ class ExportService {
                 fontSize: 10,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.grey700,
+                font: font,
               ),
             ),
             pw.SizedBox(height: 4),
             pw.Text(
               '• Цветовая индикация: зеленый - до 50% лимита, оранжевый - 50-80%, красный - выше 80%',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
             ),
             pw.Text(
               '• Дни без записей не включены в таблицу',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
             ),
           ],
         ),
       );
 
-      // Save file
-      final output = await getApplicationDocumentsDirectory();
+      // Save file to Downloads directory
+      final output = await _getDownloadsDirectory();
       final fileName = 'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.pdf';
       final file = File('${output.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
@@ -858,8 +929,8 @@ class ExportService {
         row++;
       }
 
-      // Save file
-      final output = await getApplicationDocumentsDirectory();
+      // Save file to Downloads directory
+      final output = await _getDownloadsDirectory();
       final fileName = 'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.xlsx';
       final file = File('${output.path}/$fileName');
 
