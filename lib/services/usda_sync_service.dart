@@ -110,21 +110,34 @@ class USDASyncService {
     try {
       print('📤 Sending data to Google Apps Script...');
 
-      final response = await http.post(
-        Uri.parse(webAppUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'action': 'sync_usda',
-          'data': rows,
-        }),
-      );
+      // Используем Client для автоматического следования редиректам
+      final client = http.Client();
+      try {
+        final request = http.Request('POST', Uri.parse(webAppUrl))
+          ..headers['Content-Type'] = 'application/json'
+          ..body = json.encode({
+            'action': 'sync_usda',
+            'data': rows,
+          });
 
-      if (response.statusCode == 200) {
-        print('✅ Data synced successfully');
-        return true;
-      } else {
-        print('❌ Failed to sync data: ${response.statusCode}');
-        return false;
+        // followRedirects по умолчанию true, но явно указываем
+        request.followRedirects = true;
+        request.maxRedirects = 5;
+
+        final streamedResponse = await client.send(request);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          print('✅ Data synced successfully');
+          print('Response: ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
+          return true;
+        } else {
+          print('❌ Failed to sync data: ${response.statusCode}');
+          print('Response body: ${response.body}');
+          return false;
+        }
+      } finally {
+        client.close();
       }
     } catch (e) {
       print('❌ Error sending to Web App: $e');
