@@ -6,6 +6,7 @@ import 'recipes_approval_tab.dart';
 import 'recommended_recipes_tab.dart';
 import 'articles_management_tab.dart';
 import 'comments_moderation_tab.dart';
+import 'products_moderation_tab.dart';
 import 'add_admin_recipe_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -22,35 +23,40 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-    
+    _tabController = TabController(length: 6, vsync: this);
+
     // Listen to tab changes to update FAB
     _tabController.addListener(() {
       setState(() {});
     });
-    
+
     // Load initial data only if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final adminProvider = Provider.of<AdminProvider>(context, listen: false);
-      
+
       // Load stats only if empty
       if (adminProvider.appStats.isEmpty) {
         adminProvider.loadAppStats();
       }
-      
+
       // Load pending recipes only if empty
       if (adminProvider.pendingRecipes.isEmpty) {
         adminProvider.loadPendingRecipes();
       }
-      
+
       // Load articles only if empty
       if (adminProvider.articles.isEmpty) {
         adminProvider.loadArticles();
       }
-      
+
       // Load pending comments only if empty
       if (adminProvider.pendingComments.isEmpty) {
         adminProvider.loadPendingComments();
+      }
+
+      // Load pending products only if empty
+      if (adminProvider.pendingProducts.isEmpty) {
+        adminProvider.loadPendingProducts();
       }
     });
   }
@@ -99,6 +105,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               icon: Icon(Icons.comment, size: 18),
               text: 'Комментарии',
             ),
+            Tab(
+              icon: Icon(Icons.inventory_2, size: 18),
+              text: 'Продукты',
+            ),
           ],
         ),
       ),
@@ -110,6 +120,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           RecommendedRecipesTab(),
           ArticlesManagementTab(),
           CommentsModerationTab(),
+          ProductsModerationTab(),
         ],
       ),
       floatingActionButton: _tabController.index == 2
