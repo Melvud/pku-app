@@ -9,6 +9,7 @@ import '../../models/diary_entry.dart';
 import '../../models/meal_session.dart';
 import '../products/product_selection_screen.dart';
 import '../products/add_custom_product_screen.dart';
+import '../products/barcode_scanner_screen.dart';
 import '../statistics/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -142,6 +143,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.qr_code_scanner, color: Colors.orange.shade700),
+                ),
+                title: const Text('Сканировать штрихкод'),
+                subtitle: const Text('Быстрый поиск по штрихкоду'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          BarcodeScannerScreen(mealType: session.type),
+                    ),
+                  );
+                },
+              ),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),

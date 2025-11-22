@@ -4,12 +4,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/article.dart';
 import '../models/recipe_comment.dart';
+import '../models/pending_product.dart';
 import '../services/local_database_service.dart';
+import '../services/pending_products_service.dart';
 
 class AdminProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDatabaseService _localDb = LocalDatabaseService();
+  final PendingProductsService _pendingProductsService = PendingProductsService();
 
   bool _isAdmin = false;
   bool get isAdmin => _isAdmin;
@@ -25,6 +28,13 @@ class AdminProvider with ChangeNotifier {
 
   List<RecipeComment> _allComments = [];
   List<RecipeComment> get allComments => _allComments;
+
+  // Pending products for moderation
+  List<PendingProduct> _pendingProducts = [];
+  List<PendingProduct> get pendingProducts => _pendingProducts;
+
+  bool _isLoadingProducts = false;
+  bool get isLoadingProducts => _isLoadingProducts;
 
   Map<String, dynamic> _appStats = {};
   Map<String, dynamic> get appStats => _appStats;
@@ -525,6 +535,88 @@ class AdminProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('Error deleting comment: $e');
       rethrow;
+    }
+  }
+
+  // ==================== PRODUCT MODERATION ====================
+
+  /// Load pending products for moderation
+  Future<void> loadPendingProducts() async {
+    _isLoadingProducts = true;
+    notifyListeners();
+
+    try {
+      _pendingProducts = await _pendingProductsService.getPendingProducts();
+      debugPrint('✅ Loaded ${_pendingProducts.length} pending products');
+    } catch (e) {
+      debugPrint('Error loading pending products: $e');
+      _pendingProducts = [];
+    }
+
+    _isLoadingProducts = false;
+    notifyListeners();
+  }
+
+  /// Approve a pending product
+  Future<void> approveProduct(String productId, {String? adminNotes}) async {
+    try {
+      await _pendingProductsService.approveProduct(productId, adminNotes: adminNotes);
+      _pendingProducts.removeWhere((p) => p.id == productId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error approving product: $e');
+      rethrow;
+    }
+  }
+
+  /// Reject a pending product
+  Future<void> rejectProduct(String productId, String reason, {String? adminNotes}) async {
+    try {
+      await _pendingProductsService.rejectProduct(productId, reason, adminNotes: adminNotes);
+      _pendingProducts.removeWhere((p) => p.id == productId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error rejecting product: $e');
+      rethrow;
+    }
+  }
+
+  /// Update a pending product before approval (admin edits)
+  Future<void> updatePendingProduct(PendingProduct product) async {
+    try {
+      await _pendingProductsService.updatePendingProduct(product);
+
+      // Update in local list
+      final index = _pendingProducts.indexWhere((p) => p.id == product.id);
+      if (index != -1) {
+        _pendingProducts[index] = product;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error updating pending product: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a pending product
+  Future<void> deletePendingProduct(String productId) async {
+    try {
+      await _pendingProductsService.deletePendingProduct(productId);
+      _pendingProducts.removeWhere((p) => p.id == productId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting pending product: $e');
+      rethrow;
+    }
+  }
+
+  /// Get pending products count for badge
+  Future<int> getPendingProductsCount() async {
+    try {
+      return await _pendingProductsService.getPendingCount();
+    } catch (e) {
+      debugPrint('Error getting pending products count: $e');
+      return 0;
     }
   }
 }
