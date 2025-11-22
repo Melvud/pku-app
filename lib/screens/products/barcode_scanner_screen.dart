@@ -128,24 +128,21 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       appBar: AppBar(
         title: const Text('Сканировать штрихкод'),
         actions: [
-          IconButton(
-            icon: ValueListenableBuilder<TorchState>(
-              valueListenable: _controller.torchState,
-              builder: (context, state, _) {
-                switch (state) {
-                  case TorchState.off:
-                    return const Icon(Icons.flash_off);
-                  case TorchState.on:
-                    return const Icon(Icons.flash_on, color: Colors.yellow);
-                  case TorchState.auto:
-                    return const Icon(Icons.flash_auto);
-                  case TorchState.unavailable:
-                    return const Icon(Icons.no_flash);
-                }
-              },
-            ),
-            onPressed: () => _controller.toggleTorch(),
-            tooltip: 'Вспышка',
+          ValueListenableBuilder<MobileScannerState>(
+            valueListenable: _controller,
+            builder: (context, state, _) {
+              final torchState = state.torchState;
+              return IconButton(
+                icon: switch (torchState) {
+                  TorchState.off => const Icon(Icons.flash_off),
+                  TorchState.on => const Icon(Icons.flash_on, color: Colors.yellow),
+                  TorchState.auto => const Icon(Icons.flash_auto),
+                  TorchState.unavailable => const Icon(Icons.no_flash),
+                },
+                onPressed: () => _controller.toggleTorch(),
+                tooltip: 'Вспышка',
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
