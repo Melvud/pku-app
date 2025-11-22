@@ -549,7 +549,24 @@ class ProductsProvider with ChangeNotifier {
     _syncStatus = 'Обновление локального кэша...';
     notifyListeners();
 
-    await loadProducts();
+    // Load products directly from Firestore instead of calling loadProducts()
+    // (which would return early due to _isSyncing being true)
+    try {
+      final snapshot = await _firestore
+          .collection('products')
+          .orderBy('name')
+          .get();
+
+      _products = snapshot.docs
+          .map((doc) => Product.fromFirestore(doc))
+          .toList();
+      debugPrint('✅ Loaded ${_products.length} products after sync');
+
+      // Save to local cache
+      await _saveCacheFromFirestore(snapshot.docs);
+    } catch (e) {
+      debugPrint('Error loading products after sync: $e');
+    }
 
     _lastSync = DateTime.now();
     await _saveLastSyncTime();

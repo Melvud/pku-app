@@ -317,6 +317,47 @@ class DiaryProvider with ChangeNotifier {
     }
   }
 
+  // Update existing entry
+  Future<void> updateEntry({
+    required String entryId,
+    required String productName,
+    required double portionG,
+    required double pheUsedPer100g,
+    required double proteinPer100g,
+    double? fatPer100g,
+    double? carbsPer100g,
+    double? caloriesPer100g,
+  }) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      final multiplier = portionG / 100.0;
+      final pheInPortion = pheUsedPer100g * multiplier;
+      final proteinInPortion = proteinPer100g * multiplier;
+      final fatInPortion = fatPer100g != null ? fatPer100g * multiplier : null;
+      final carbsInPortion = carbsPer100g != null ? carbsPer100g * multiplier : null;
+      final caloriesInPortion = caloriesPer100g != null ? caloriesPer100g * multiplier : null;
+
+      await _firestore.collection('diary_entries').doc(entryId).update({
+        'productName': productName,
+        'portionG': portionG,
+        'pheUsedPer100g': pheUsedPer100g,
+        'pheInPortion': pheInPortion,
+        'proteinInPortion': proteinInPortion,
+        'fatInPortion': fatInPortion,
+        'carbsInPortion': carbsInPortion,
+        'caloriesInPortion': caloriesInPortion,
+      });
+
+      await loadEntriesForDate(_selectedDate);
+      debugPrint('✅ Updated entry: $entryId');
+    } catch (e) {
+      _error = 'Ошибка обновления записи: $e';
+      debugPrint('❌ Error updating entry: $e');
+      rethrow;
+    }
+  }
+
   // Get monthly statistics
   Future<Map<String, dynamic>> getMonthlyStats(int year, int month) async {
     if (_auth.currentUser == null) return {};

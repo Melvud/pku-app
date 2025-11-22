@@ -25,18 +25,40 @@ class PendingProductsService {
   /// Get all pending products for admin review
   Future<List<PendingProduct>> getPendingProducts() async {
     try {
+      // Try query with orderBy (requires composite index)
       final snapshot = await _firestore
           .collection('pending_products')
           .where('status', isEqualTo: PendingProductStatus.pending.name)
           .orderBy('createdAt', descending: true)
           .get();
 
+      debugPrint('✅ Loaded ${snapshot.docs.length} pending products with index');
       return snapshot.docs
           .map((doc) => PendingProduct.fromFirestore(doc))
           .toList();
     } catch (e) {
-      debugPrint('Error loading pending products: $e');
-      return [];
+      debugPrint('⚠️ Index query failed, trying fallback: $e');
+
+      // Fallback: query without orderBy, then sort in memory
+      try {
+        final snapshot = await _firestore
+            .collection('pending_products')
+            .where('status', isEqualTo: PendingProductStatus.pending.name)
+            .get();
+
+        final products = snapshot.docs
+            .map((doc) => PendingProduct.fromFirestore(doc))
+            .toList();
+
+        // Sort by createdAt descending
+        products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        debugPrint('✅ Loaded ${products.length} pending products (fallback)');
+        return products;
+      } catch (fallbackError) {
+        debugPrint('❌ Error loading pending products: $fallbackError');
+        return [];
+      }
     }
   }
 
