@@ -92,14 +92,10 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
     );
     _selectedCategory = _mapOldCategoryToNew(p?.category ?? 'other');
 
-    // If product not found, enable editing mode and show category selection
+    // If product not found, enable editing mode
     if (widget.product == null) {
       _isEditing = true;
       _categorySelected = false;
-      // Show category selection dialog after build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showCategorySelectionDialog();
-      });
     } else {
       _categorySelected = true;
     }
@@ -121,40 +117,6 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
       default:
         return 'other';
     }
-  }
-
-  /// Show dialog to select category for new product
-  Future<void> _showCategorySelectionDialog() async {
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Выберите категорию продукта'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Категория нужна для автоматического расчёта фенилаланина',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            ..._categories.map((cat) => ListTile(
-              title: Text(cat['label'] as String),
-              subtitle: Text(
-                '${cat['coefficient']} мг Phe на 1г белка',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              dense: true,
-              onTap: () {
-                Navigator.pop(context);
-                _onCategoryChanged(cat['value'] as String);
-              },
-            )),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -251,7 +213,12 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
   Future<void> _submitForModeration(Product product) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        debugPrint('⚠️ Cannot submit for moderation: user not logged in');
+        return;
+      }
+
+      debugPrint('📤 Submitting product for moderation: ${product.name}');
 
       final pendingProduct = PendingProduct.fromProduct(
         product: product,
@@ -265,12 +232,12 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
       );
 
       final pendingService = PendingProductsService();
-      await pendingService.submitProduct(pendingProduct);
+      final docId = await pendingService.submitProduct(pendingProduct);
 
-      debugPrint('✅ Product submitted for moderation');
+      debugPrint('✅ Product submitted for moderation with ID: $docId');
     } catch (e) {
-      debugPrint('Error submitting for moderation: $e');
-      // Don't fail the main operation
+      debugPrint('❌ Error submitting for moderation: $e');
+      // Don't fail the main operation, but log the error
     }
   }
 
@@ -322,10 +289,39 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
             children: [
               // Status card
               _buildStatusCard(isNewProduct),
-              const SizedBox(height: 16),
 
               // Phe calculated warning
-              if (_isPheCalculated) _buildPheWarning(),
+              if (_isPheCalculated) ...[
+                const SizedBox(height: 12),
+                _buildPheWarning(),
+              ],
+
+              // Category selection hint for new products
+              if (isNewProduct && !_categorySelected) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: Colors.blue.shade50,
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Выберите категорию продукта для расчёта Phe',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 16),
 

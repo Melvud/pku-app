@@ -11,6 +11,7 @@ import '../products/product_selection_screen.dart';
 import '../products/add_custom_product_screen.dart';
 import '../products/barcode_scanner_screen.dart';
 import '../statistics/statistics_screen.dart';
+import '../diary/edit_diary_entry_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -579,6 +580,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _showAddProductOptions(context, session),
                             onDeleteEntry: (entryId) =>
                                 diaryProvider.deleteEntry(entryId),
+                            onEntryTap: (entry) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditDiaryEntryScreen(entry: entry),
+                                ),
+                              );
+                            },
                             onDeleteMeal: () async {
                               final confirm = await showDialog<bool>(
                                 context: context,
@@ -872,6 +881,7 @@ class _MealCard extends StatelessWidget {
   final int mealNumber;
   final VoidCallback onAddPressed;
   final Function(String) onDeleteEntry;
+  final Function(DiaryEntry) onEntryTap;
   final VoidCallback onDeleteMeal;
   final VoidCallback onEditTime;
   final VoidCallback onToggleFormula;
@@ -882,6 +892,7 @@ class _MealCard extends StatelessWidget {
     required this.mealNumber,
     required this.onAddPressed,
     required this.onDeleteEntry,
+    required this.onEntryTap,
     required this.onDeleteMeal,
     required this.onEditTime,
     required this.onToggleFormula,
@@ -1148,24 +1159,36 @@ class _MealCard extends StatelessWidget {
                       '${entry.portionG.toStringAsFixed(0)} г • Phe: ${entry.pheInPortion.toStringAsFixed(0)} мг',
                       style: const TextStyle(fontSize: 12),
                     ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${entry.proteinInPortion.toStringAsFixed(1)} г',
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${entry.proteinInPortion.toStringAsFixed(1)} г',
+                            style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right,
+                          color: Colors.grey.shade400,
+                          size: 20,
+                        ),
+                      ],
                     ),
+                    onTap: () => onEntryTap(entry),
                   ),
                 );
               },
