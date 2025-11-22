@@ -1,8 +1,6 @@
 // lib/screens/products/barcode_scanner_screen.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:provider/provider.dart';
-import '../../providers/products_provider.dart';
 import '../../models/diary_entry.dart';
 import '../../models/product.dart';
 import '../../services/barcode_sheets_service.dart';
@@ -61,32 +59,21 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     await _controller.stop();
 
     try {
-      // 1. First search in local Google Sheets barcode database
-      setState(() => _searchStatus = 'Поиск в базе штрихкодов...');
+      // Search only in Google Sheets barcode database
+      setState(() => _searchStatus = 'Поиск в базе Google Sheets...');
 
       final barcodeSheetsService = BarcodeSheetsService();
       Product? foundProduct = await barcodeSheetsService.findProductByBarcode(code);
-      String source = 'Google Sheets Barcode DB';
+      String source = 'Google Sheets';
       bool isPheCalculated = false;
 
-      // Check if Phe was calculated
+      // Check if Phe was calculated (not measured)
       if (foundProduct != null && foundProduct.pheMeasuredPer100g == null) {
         isPheCalculated = true;
       }
 
-      // 2. If not found, search in Firestore (local user database)
-      if (foundProduct == null) {
-        setState(() => _searchStatus = 'Поиск в локальной базе...');
-
-        final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
-        final result = await productsProvider.findProductByBarcode(code);
-
-        if (result.product.name.isNotEmpty) {
-          foundProduct = result.product;
-          source = result.source;
-          isPheCalculated = result.product.pheMeasuredPer100g == null;
-        }
-      }
+      // If not found in Google Sheets, product will be null
+      // User will be prompted to create a new product
 
       if (mounted) {
         Navigator.pushReplacement(

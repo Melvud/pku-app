@@ -45,17 +45,27 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
   bool _isEditing = false;
   bool _isPheCalculated = false;
   bool _hasChanges = false;
+  bool _categorySelected = false; // Track if category was selected for new product
 
-  final List<Map<String, String>> _categories = [
-    {'value': 'vegetables', 'label': 'Овощи'},
-    {'value': 'fruits', 'label': 'Фрукты'},
-    {'value': 'grains', 'label': 'Зерновые'},
-    {'value': 'dairy', 'label': 'Молочные'},
-    {'value': 'protein', 'label': 'Белковые'},
-    {'value': 'beverages', 'label': 'Напитки'},
-    {'value': 'sweets', 'label': 'Сладости'},
-    {'value': 'other', 'label': 'Другое'},
+  // PKU-specific categories with Phe coefficients (mg per 1g protein)
+  final List<Map<String, dynamic>> _categories = [
+    {'value': 'meat_fish_eggs_cheese', 'label': 'Мясо/рыба/яйца/сыры', 'coefficient': 50},
+    {'value': 'dairy', 'label': 'Молочное (кроме сыров и творога)', 'coefficient': 40},
+    {'value': 'grains_bread', 'label': 'Крупы/хлеб', 'coefficient': 30},
+    {'value': 'vegetables', 'label': 'Овощи', 'coefficient': 25},
+    {'value': 'fruits', 'label': 'Фрукты', 'coefficient': 25},
+    {'value': 'nuts_legumes', 'label': 'Орехи/бобовые', 'coefficient': 45},
+    {'value': 'other', 'label': 'Другое', 'coefficient': 45},
   ];
+
+  /// Get Phe coefficient for a category (mg per 1g protein)
+  int _getPheCoefficient(String category) {
+    final cat = _categories.firstWhere(
+      (c) => c['value'] == category,
+      orElse: () => {'coefficient': 45},
+    );
+    return cat['coefficient'] as int;
+  }
 
   @override
   void initState() {
@@ -80,12 +90,71 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
     _caloriesController = TextEditingController(
       text: p?.caloriesPer100g?.toStringAsFixed(1) ?? '',
     );
-    _selectedCategory = p?.category ?? 'other';
+    _selectedCategory = _mapOldCategoryToNew(p?.category ?? 'other');
 
-    // If product not found, enable editing mode
+    // If product not found, enable editing mode and show category selection
     if (widget.product == null) {
       _isEditing = true;
+      _categorySelected = false;
+      // Show category selection dialog after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showCategorySelectionDialog();
+      });
+    } else {
+      _categorySelected = true;
     }
+  }
+
+  /// Map old category values to new PKU categories
+  String _mapOldCategoryToNew(String oldCategory) {
+    switch (oldCategory) {
+      case 'vegetables':
+        return 'vegetables';
+      case 'fruits':
+        return 'fruits';
+      case 'grains':
+        return 'grains_bread';
+      case 'dairy':
+        return 'dairy';
+      case 'protein':
+        return 'meat_fish_eggs_cheese';
+      default:
+        return 'other';
+    }
+  }
+
+  /// Show dialog to select category for new product
+  Future<void> _showCategorySelectionDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Выберите категорию продукта'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Категория нужна для автоматического расчёта фенилаланина',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ..._categories.map((cat) => ListTile(
+              title: Text(cat['label'] as String),
+              subtitle: Text(
+                '${cat['coefficient']} мг Phe на 1г белка',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              dense: true,
+              onTap: () {
+                Navigator.pop(context);
+                _onCategoryChanged(cat['value'] as String);
+              },
+            )),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -103,12 +172,26 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
   void _autoCalculatePhe() {
     final protein = double.tryParse(_proteinController.text) ?? 0;
     if (protein > 0) {
-      final estimatedPhe = protein * 50; // 50 mg Phe per 1g protein
+      final coefficient = _getPheCoefficient(_selectedCategory);
+      final estimatedPhe = protein * coefficient;
       _pheController.text = estimatedPhe.toStringAsFixed(0);
       setState(() {
         _isPheCalculated = true;
         _hasChanges = true;
       });
+    }
+  }
+
+  /// Recalculate Phe when category changes (only if Phe was auto-calculated)
+  void _onCategoryChanged(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _categorySelected = true;
+      _hasChanges = true;
+    });
+    // Only recalculate if Phe was previously auto-calculated
+    if (_isPheCalculated) {
+      _autoCalculatePhe();
     }
   }
 
@@ -300,26 +383,28 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Category dropdown
+              // Category dropdown with Phe coefficient info
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Категория',
-                  prefixIcon: Icon(Icons.category),
+                decoration: InputDecoration(
+                  labelText: 'Категория *',
+                  prefixIcon: const Icon(Icons.category),
+                  helperText: 'Коэффициент: ${_getPheCoefficient(_selectedCategory)} мг Phe на 1г белка',
+                  helperStyle: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
-                    value: cat['value'],
-                    child: Text(cat['label']!),
+                    value: cat['value'] as String,
+                    child: Text(cat['label'] as String),
                   );
                 }).toList(),
                 onChanged: _isEditing
                     ? (value) {
                         if (value != null) {
-                          setState(() {
-                            _selectedCategory = value;
-                            _hasChanges = true;
-                          });
+                          _onCategoryChanged(value);
                         }
                       }
                     : null,
@@ -435,10 +520,10 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                     color: _isPheCalculated ? Colors.orange : null,
                   ),
                   helperText: _isPheCalculated
-                      ? 'Рассчитано автоматически (белок × 50)'
-                      : null,
+                      ? 'Рассчитано автоматически (белок × ${_getPheCoefficient(_selectedCategory)})'
+                      : 'Введено вручную',
                   helperStyle: TextStyle(
-                    color: Colors.orange.shade700,
+                    color: _isPheCalculated ? Colors.orange.shade700 : Colors.green.shade700,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -623,6 +708,12 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
   }
 
   Widget _buildPheWarning() {
+    final coefficient = _getPheCoefficient(_selectedCategory);
+    final categoryLabel = _categories.firstWhere(
+      (c) => c['value'] == _selectedCategory,
+      orElse: () => {'label': 'Другое'},
+    )['label'] as String;
+
     return Card(
       color: Colors.amber.shade50,
       child: Padding(
@@ -645,7 +736,7 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Формула: 1г белка = 50мг Phe. Рекомендуем проверить значение.',
+                    'Формула: 1г белка × $coefficient мг ($categoryLabel).\nВы можете изменить значение вручную.',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.amber.shade900,
