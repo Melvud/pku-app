@@ -489,9 +489,10 @@ class ProductsProvider with ChangeNotifier {
     _syncStatus = 'Обновление базы данных...';
     notifyListeners();
 
-    final batch = _firestore.batch();
+    var batch = _firestore.batch();
     int addedCount = 0;
     int updatedCount = 0;
+    int batchOperationCount = 0;
 
     for (int i = 0; i < sheetProducts.length; i++) {
       final product = sheetProducts[i];
@@ -526,14 +527,23 @@ class ProductsProvider with ChangeNotifier {
           product.toFirestore(),
         );
       }
+      batchOperationCount++;
 
-      if ((i + 1) % 500 == 0) {
+      // Firestore batch limit is 500 operations
+      if (batchOperationCount >= 500) {
         await batch.commit();
         debugPrint('✅ Committed batch at ${i + 1} products');
+        // Create a new batch for the next set of operations
+        batch = _firestore.batch();
+        batchOperationCount = 0;
       }
     }
 
-    await batch.commit();
+    // Commit any remaining operations
+    if (batchOperationCount > 0) {
+      await batch.commit();
+      debugPrint('✅ Committed final batch');
+    }
 
     _syncProgress = 0.9;
     _syncStatus = 'Обновление локального кэша...';
