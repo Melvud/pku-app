@@ -465,6 +465,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final isAdmin = userProvider.userProfile?.isAdmin ?? false;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Добавить рецепт'),
@@ -695,6 +698,33 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
               ),
+              const SizedBox(height: 8),
+
+              // Warning about data accuracy
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange.shade800),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Пожалуйста, внимательно проверяйте данные БЖУ и ФА. От этого зависит здоровье других пользователей.',
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
 
               TextFormField(
@@ -741,46 +771,73 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
               TextFormField(
                 controller: _fatController,
-                decoration: const InputDecoration(
-                  labelText: 'Жиры',
+                decoration: InputDecoration(
+                  labelText: isAdmin ? 'Жиры' : 'Жиры *',
                   suffixText: 'г/100г',
-                  helperText: 'Необязательное поле',
+                  helperText:
+                      isAdmin ? 'Необязательное поле' : 'Обязательное поле',
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
+                validator: isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите жиры';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
               ),
               const SizedBox(height: 16),
 
               TextFormField(
                 controller: _carbsController,
-                decoration: const InputDecoration(
-                  labelText: 'Углеводы',
+                decoration: InputDecoration(
+                  labelText: isAdmin ? 'Углеводы' : 'Углеводы *',
                   suffixText: 'г/100г',
-                  helperText: 'Необязательное поле',
+                  helperText:
+                      isAdmin ? 'Необязательное поле' : 'Обязательное поле',
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
+                validator: isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите углеводы';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
               ),
               const SizedBox(height: 16),
 
               TextFormField(
                 controller: _caloriesController,
-                decoration: const InputDecoration(
-                  labelText: 'Калории',
+                decoration: InputDecoration(
+                  labelText: isAdmin ? 'Калории' : 'Калории *',
                   suffixText: 'ккал/100г',
-                  helperText: 'Необязательное поле',
+                  helperText:
+                      isAdmin ? 'Необязательное поле' : 'Обязательное поле',
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
+                validator: isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите калории';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
               ),
               const SizedBox(height: 32),
 

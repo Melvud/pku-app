@@ -365,7 +365,7 @@ class RecipeLoaderService {
       status: RecipeStatus.approved,
       createdAt: DateTime.now(),
       approvedAt: DateTime.now(),
-      isOfficial: true,
+      isOfficial: false, // Changed from true
       isRecommended: true,
       likesCount: 0,
       likedBy: [],
