@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class GoogleSheetsService {
-  static const String _spreadsheetId =
-      '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
-  static const String _apiKey = 'AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg';
-  static const int _productsGid = 118484762;
+  static String get _spreadsheetId => dotenv.env['SPREADSHEET_ID'] ?? '';
+  static String get _apiKey => dotenv.env['GOOGLE_SHEETS_API_KEY'] ?? '';
+  static int get _productsGid =>
+      int.tryParse(dotenv.env['PRODUCTS_GID'] ?? '') ?? 0;
 
   Future<String?> _getSheetTitle(int gid) async {
     try {

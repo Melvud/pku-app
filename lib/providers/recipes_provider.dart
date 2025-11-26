@@ -4,11 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/recipe_comment.dart';
 import '../services/local_database_service.dart';
+import '../services/recipe_loader_service.dart'; // ✅ Add import
 
 class RecipesProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDatabaseService _localDb = LocalDatabaseService();
+  final RecipeLoaderService _recipeLoader =
+      RecipeLoaderService(); // ✅ Add loader service
 
   List<Recipe> _recipes = [];
   List<Recipe> _myRecipes = [];
@@ -40,7 +43,8 @@ class RecipesProvider with ChangeNotifier {
       }
 
       // Step 2: Check if we should sync with Firebase
-      final shouldSync = await _localDb.shouldSyncWithFirebase('recipes', maxAge: const Duration(minutes: 5));
+      final shouldSync = await _localDb.shouldSyncWithFirebase('recipes',
+          maxAge: const Duration(minutes: 5));
       if (!shouldSync && cachedRecipes.isNotEmpty) {
         debugPrint('ℹ️ Using cached recipes (recent sync)');
         return;
@@ -56,13 +60,16 @@ class RecipesProvider with ChangeNotifier {
 
       // Step 4: Only update if Firebase has different data
       if (snapshot.docs.isNotEmpty) {
-        final firebaseRecipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
-        
+        final firebaseRecipes =
+            snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+
         // Compare if data has changed
         bool hasChanges = _recipes.length != firebaseRecipes.length;
         if (!hasChanges && _recipes.isNotEmpty) {
           // Check if any recipe has been updated
-          for (var i = 0; i < _recipes.length && i < firebaseRecipes.length; i++) {
+          for (var i = 0;
+              i < _recipes.length && i < firebaseRecipes.length;
+              i++) {
             if (_recipes[i].id != firebaseRecipes[i].id ||
                 _recipes[i].createdAt != firebaseRecipes[i].createdAt) {
               hasChanges = true;
@@ -124,10 +131,11 @@ class RecipesProvider with ChangeNotifier {
               ?.map((i) => RecipeIngredient.fromMap(i as Map<String, dynamic>))
               .toList() ??
           [],
-      instructions: (map['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+      instructions:
+          (map['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
       steps: (map['steps'] as List<dynamic>?)
-              ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
-              .toList(),
+          ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
+          .toList(),
       servings: map['servings'] ?? 1,
       cookingTimeMinutes: map['cookingTimeMinutes'] ?? map['cookingTime'] ?? 0,
       status: RecipeStatus.values.firstWhere(
@@ -142,8 +150,9 @@ class RecipesProvider with ChangeNotifier {
       carbsPer100g: map['carbsPer100g']?.toDouble(),
       caloriesPer100g: map['caloriesPer100g']?.toDouble(),
       imageUrl: map['imageUrl'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
-      approvedAt: map['approvedAt'] != null 
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+          map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
+      approvedAt: map['approvedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['approvedAt'])
           : null,
       rejectionReason: map['rejectionReason'],
@@ -164,7 +173,8 @@ class RecipesProvider with ChangeNotifier {
           .orderBy('createdAt', descending: true)
           .get();
 
-      _myRecipes = snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+      _myRecipes =
+          snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
       debugPrint('✅ Loaded ${_myRecipes.length} my recipes');
       notifyListeners();
     } catch (e) {
@@ -177,16 +187,17 @@ class RecipesProvider with ChangeNotifier {
     if (_auth.currentUser == null) return;
 
     try {
-      final docRef = await _firestore.collection('recipes').add(recipe.toFirestore());
-      
+      final docRef =
+          await _firestore.collection('recipes').add(recipe.toFirestore());
+
       // Get the created recipe with the ID
       final doc = await docRef.get();
       final createdRecipe = Recipe.fromFirestore(doc);
-      
+
       // Add to my recipes immediately
       _myRecipes.insert(0, createdRecipe);
       notifyListeners();
-      
+
       debugPrint('✅ Recipe submitted for approval and added to my recipes');
     } catch (e) {
       _error = 'Ошибка добавления рецепта: $e';
@@ -224,6 +235,11 @@ class RecipesProvider with ChangeNotifier {
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
 
+      // Sync with GitHub if it's an admin recipe (recommended)
+      if (recipe.isRecommended) {
+        await _recipeLoader.updateRecipeInGitHub(updatedRecipe);
+      }
+
       notifyListeners();
       debugPrint('✅ Recipe updated');
     } catch (e) {
@@ -238,6 +254,11 @@ class RecipesProvider with ChangeNotifier {
     if (_auth.currentUser == null) return;
 
     try {
+      // Get recipe name before deleting to remove from GitHub
+      final recipeDoc =
+          await _firestore.collection('recipes').doc(recipeId).get();
+      final recipeName = recipeDoc.data()?['name'] as String?;
+
       await _firestore.collection('recipes').doc(recipeId).delete();
 
       // Remove from local lists
@@ -246,6 +267,11 @@ class RecipesProvider with ChangeNotifier {
 
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
+
+      // Sync with GitHub
+      if (recipeName != null) {
+        await _recipeLoader.deleteRecipeFromGitHub(recipeName);
+      }
 
       notifyListeners();
       debugPrint('✅ Recipe deleted');
@@ -265,12 +291,13 @@ class RecipesProvider with ChangeNotifier {
   // Поиск рецептов
   List<Recipe> searchRecipes(String query) {
     if (query.isEmpty) return _recipes;
-    
+
     final lowerQuery = query.toLowerCase();
     return _recipes.where((recipe) {
       return recipe.name.toLowerCase().contains(lowerQuery) ||
-             recipe.description.toLowerCase().contains(lowerQuery) ||
-             recipe.ingredients.any((i) => i.name.toLowerCase().contains(lowerQuery));
+          recipe.description.toLowerCase().contains(lowerQuery) ||
+          recipe.ingredients
+              .any((i) => i.name.toLowerCase().contains(lowerQuery));
     }).toList();
   }
 
@@ -296,12 +323,12 @@ class RecipesProvider with ChangeNotifier {
       final userId = _auth.currentUser!.uid;
       final recipeRef = _firestore.collection('recipes').doc(recipeId);
       final doc = await recipeRef.get();
-      
+
       if (!doc.exists) return;
-      
+
       final recipe = Recipe.fromFirestore(doc);
       final isLiked = recipe.likedBy.contains(userId);
-      
+
       if (isLiked) {
         // Unlike
         await recipeRef.update({
@@ -315,11 +342,11 @@ class RecipesProvider with ChangeNotifier {
           'likedBy': FieldValue.arrayUnion([userId]),
         });
       }
-      
+
       // Refresh recipes lists
       await loadApprovedRecipes();
       await loadMyRecipes();
-      
+
       debugPrint('✅ Toggled like on recipe $recipeId');
     } catch (e) {
       debugPrint('❌ Error toggling like: $e');
@@ -347,9 +374,9 @@ class RecipesProvider with ChangeNotifier {
         status: CommentStatus.approved, // Immediately approved
         parentCommentId: parentCommentId,
       );
-      
+
       await _firestore.collection('recipe_comments').add(comment.toFirestore());
-      
+
       debugPrint('✅ Comment added to recipe $recipeId');
     } catch (e) {
       debugPrint('❌ Error adding comment: $e');
@@ -383,7 +410,7 @@ class RecipesProvider with ChangeNotifier {
   Future<void> deleteComment(String commentId) async {
     try {
       await _firestore.collection('recipe_comments').doc(commentId).delete();
-      
+
       debugPrint('✅ Comment deleted: $commentId');
     } catch (e) {
       debugPrint('❌ Error deleting comment: $e');
@@ -414,7 +441,7 @@ class RecipesProvider with ChangeNotifier {
       await _firestore.collection('recipe_comments').doc(commentId).update({
         'status': CommentStatus.approved.name,
       });
-      
+
       debugPrint('✅ Comment approved: $commentId');
     } catch (e) {
       debugPrint('❌ Error approving comment: $e');
@@ -428,7 +455,7 @@ class RecipesProvider with ChangeNotifier {
       await _firestore.collection('recipe_comments').doc(commentId).update({
         'status': CommentStatus.rejected.name,
       });
-      
+
       debugPrint('✅ Comment rejected: $commentId');
     } catch (e) {
       debugPrint('❌ Error rejecting comment: $e');

@@ -21,8 +21,14 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/admin/admin_panel_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ Добавить импорт
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

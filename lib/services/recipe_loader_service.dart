@@ -1,35 +1,48 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/recipe.dart';
 
 class RecipeLoaderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  static const String _recipesPath = 'assets/recipes/new_recipes.json';
 
+  // GitHub Configuration
+  static const String _githubOwner = 'Melvud';
+  static const String _githubRepo = 'pku-app';
+  static const String _githubPath = 'assets/recipes/new_recipes.json';
+  static const String _githubBranch = 'main';
+
+  String get _githubToken => dotenv.env['GITHUB_TOKEN'] ?? '';
+
+  // Load recipes from GitHub
   Future<void> loadRecipes() async {
     try {
-      // 1. Check if the file exists and load it
-      String jsonString;
-      try {
-        jsonString = await rootBundle.loadString(_recipesPath);
-      } catch (e) {
+      debugPrint('🔄 Fetching recipes from GitHub...');
+
+      final url = Uri.parse(
+          'https://raw.githubusercontent.com/$_githubOwner/$_githubRepo/$_githubBranch/$_githubPath');
+      final response = await http.get(url);
+
+      if (response.statusCode != 200) {
         debugPrint(
-            '⚠️ Recipe file not found at $_recipesPath. Skipping auto-load.');
+            '⚠️ Failed to fetch recipes from GitHub: ${response.statusCode}');
         return;
       }
 
+      final String jsonString = response.body;
       if (jsonString.isEmpty) return;
 
       final List<dynamic> jsonList = json.decode(jsonString);
       if (jsonList.isEmpty) return;
 
       debugPrint(
-          '📦 Found ${jsonList.length} items in $_recipesPath. Checking for new recipes...');
+          '📦 Found ${jsonList.length} items in GitHub file. Checking for new recipes...');
 
       int addedCount = 0;
       int skippedCount = 0;
@@ -43,7 +56,7 @@ class RecipeLoaderService {
         final String name = recipeJson['name'] ?? '';
         if (name.isEmpty) continue;
 
-        // 2. Check if recipe with this name already exists
+        // Check if recipe with this name already exists
         final QuerySnapshot existingDocs = await _firestore
             .collection('recipes')
             .where('name', isEqualTo: name)
@@ -55,35 +68,51 @@ class RecipeLoaderService {
           continue;
         }
 
-        // 3. Process images and create recipe
+        // Create new recipe object
         try {
-          // Upload main image if needed
+          // For GitHub sync, we assume images are either URLs or we skip local asset upload logic
+          // as we can't upload local assets from a remote JSON easily without the assets being present.
+          // However, if the user has the assets locally (which they should if they are running the app),
+          // we could try to upload them. But for now, let's assume the JSON on GitHub might point to
+          // URLs or assets that are already uploaded or handled.
+
+          // If the recipe has local asset paths, we try to upload them if we can find them in the bundle.
+          // Since we are running the app, we have access to assets.
+
           String? imageUrl = recipeJson['imageUrl'];
           if (imageUrl != null && imageUrl.startsWith('assets/')) {
-            imageUrl = await _uploadImage(imageUrl, name, 'cover');
-            recipeJson['imageUrl'] = imageUrl;
+            try {
+              imageUrl = await _uploadImage(imageUrl, name, 'cover');
+              recipeJson['imageUrl'] = imageUrl;
+            } catch (e) {
+              debugPrint('⚠️ Could not upload image $imageUrl: $e');
+            }
           }
 
-          // Upload step images if needed
           if (recipeJson['steps'] != null) {
             final steps = recipeJson['steps'] as List<dynamic>;
             for (int i = 0; i < steps.length; i++) {
               final step = steps[i] as Map<String, dynamic>;
               String? stepImageUrl = step['imageUrl'];
               if (stepImageUrl != null && stepImageUrl.startsWith('assets/')) {
-                stepImageUrl =
-                    await _uploadImage(stepImageUrl, name, 'step_$i');
-                step['imageUrl'] = stepImageUrl;
+                try {
+                  stepImageUrl =
+                      await _uploadImage(stepImageUrl, name, 'step_$i');
+                  step['imageUrl'] = stepImageUrl;
+                } catch (e) {
+                  debugPrint(
+                      '⚠️ Could not upload step image $stepImageUrl: $e');
+                }
               }
             }
           }
 
           final recipe = _createRecipeFromTemplate(recipeJson);
 
-          // 4. Upload to Firestore
+          // Upload to Firestore
           await _firestore.collection('recipes').add(recipe.toFirestore());
           addedCount++;
-          debugPrint('✅ Added new recipe: $name');
+          debugPrint('✅ Added new recipe from GitHub: $name');
         } catch (e) {
           debugPrint('❌ Error creating recipe "$name": $e');
         }
@@ -94,6 +123,163 @@ class RecipeLoaderService {
     } catch (e) {
       debugPrint('❌ Error in RecipeLoaderService: $e');
     }
+  }
+
+  // Update recipe in GitHub
+  Future<void> updateRecipeInGitHub(Recipe recipe) async {
+    if (_githubToken.isEmpty) {
+      debugPrint('⚠️ GitHub Token not found. Skipping GitHub update.');
+      return;
+    }
+
+    try {
+      debugPrint('🔄 Updating recipe "${recipe.name}" in GitHub...');
+
+      // 1. Get current file content and SHA
+      final fileData = await _getGitHubFile();
+      if (fileData == null) return;
+
+      final String sha = fileData['sha'];
+      final String content =
+          utf8.decode(base64.decode(fileData['content'].replaceAll('\n', '')));
+      final List<dynamic> jsonList = json.decode(content);
+
+      // 2. Find and update the recipe
+      bool found = false;
+      for (int i = 0; i < jsonList.length; i++) {
+        final item = jsonList[i];
+        if (item is Map<String, dynamic> && item['name'] == recipe.name) {
+          // Update fields
+          jsonList[i] = _recipeToJson(recipe,
+              item); // Preserve existing fields like documentation if any
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        // Add as new if not found (though usually it should be there)
+        jsonList.add(_recipeToJson(recipe, {}));
+      }
+
+      // 3. Commit changes
+      await _updateGitHubFile(jsonList, sha, 'Update recipe: ${recipe.name}');
+      debugPrint('✅ Recipe updated in GitHub');
+    } catch (e) {
+      debugPrint('❌ Error updating recipe in GitHub: $e');
+    }
+  }
+
+  // Delete recipe from GitHub
+  Future<void> deleteRecipeFromGitHub(String recipeName) async {
+    if (_githubToken.isEmpty) {
+      debugPrint('⚠️ GitHub Token not found. Skipping GitHub delete.');
+      return;
+    }
+
+    try {
+      debugPrint('🔄 Deleting recipe "$recipeName" from GitHub...');
+
+      // 1. Get current file content and SHA
+      final fileData = await _getGitHubFile();
+      if (fileData == null) return;
+
+      final String sha = fileData['sha'];
+      final String content =
+          utf8.decode(base64.decode(fileData['content'].replaceAll('\n', '')));
+      final List<dynamic> jsonList = json.decode(content);
+
+      // 2. Remove the recipe
+      final initialLength = jsonList.length;
+      jsonList.removeWhere(
+          (item) => item is Map<String, dynamic> && item['name'] == recipeName);
+
+      if (jsonList.length == initialLength) {
+        debugPrint('⚠️ Recipe not found in GitHub file.');
+        return;
+      }
+
+      // 3. Commit changes
+      await _updateGitHubFile(jsonList, sha, 'Delete recipe: $recipeName');
+      debugPrint('✅ Recipe deleted from GitHub');
+    } catch (e) {
+      debugPrint('❌ Error deleting recipe from GitHub: $e');
+    }
+  }
+
+  // Helper: Get GitHub file details
+  Future<Map<String, dynamic>?> _getGitHubFile() async {
+    final url = Uri.parse(
+        'https://api.github.com/repos/$_githubOwner/$_githubRepo/contents/$_githubPath');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $_githubToken',
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      debugPrint(
+          '❌ Failed to get GitHub file: ${response.statusCode} ${response.body}');
+      return null;
+    }
+  }
+
+  // Helper: Update GitHub file
+  Future<void> _updateGitHubFile(
+      List<dynamic> newContent, String sha, String message) async {
+    final url = Uri.parse(
+        'https://api.github.com/repos/$_githubOwner/$_githubRepo/contents/$_githubPath');
+    final String encodedContent = base64.encode(
+        utf8.encode(const JsonEncoder.withIndent('  ').convert(newContent)));
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $_githubToken',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'message': message,
+        'content': encodedContent,
+        'sha': sha,
+        'branch': _githubBranch,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+          'Failed to update GitHub file: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  // Helper: Convert Recipe to JSON for file
+  Map<String, dynamic> _recipeToJson(
+      Recipe recipe, Map<String, dynamic> existing) {
+    // We want to keep the structure compatible with our JSON template
+    return {
+      'name': recipe.name,
+      'description': recipe.description,
+      'category': recipe.category.name,
+      'ingredients': recipe.ingredients.map((i) => i.toMap()).toList(),
+      'instructions': recipe.instructions, // Keep for backward compatibility
+      'steps': recipe.steps?.map((s) => s.toMap()).toList(),
+      'servings': recipe.servings,
+      'cookingTimeMinutes': recipe.cookingTimeMinutes,
+      'phePer100g': recipe.phePer100g,
+      'proteinPer100g': recipe.proteinPer100g,
+      'fatPer100g': recipe.fatPer100g,
+      'carbsPer100g': recipe.carbsPer100g,
+      'caloriesPer100g': recipe.caloriesPer100g,
+      'imageUrl': recipe.imageUrl, // This might be a URL now
+      // Preserve documentation if it exists in the original item
+      if (existing.containsKey('_documentation'))
+        '_documentation': existing['_documentation'],
+    };
   }
 
   Future<String?> _uploadImage(
@@ -118,7 +304,7 @@ class RecipeLoaderService {
       return downloadUrl;
     } catch (e) {
       debugPrint('❌ Error uploading image $assetPath: $e');
-      return null;
+      rethrow;
     }
   }
 

@@ -4,17 +4,20 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Service for loading products with barcodes from Google Sheets
 /// Sheet: gid=1127717778 - Barcode database
 /// Sheet: gid=288786302 - General products database
 class BarcodeSheetsService {
-  static const String _spreadsheetId =
-      '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
-  static const String _apiKey = 'AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg';
+  static String get _spreadsheetId => dotenv.env['SPREADSHEET_ID'] ?? '';
+  static String get _apiKey => dotenv.env['GOOGLE_SHEETS_API_KEY'] ?? '';
 
   // Sheet IDs
-  static const int _barcodeSheetGid = 1127717778;
-  static const int _generalProductsSheetGid = 288786302;
+  static int get _barcodeSheetGid =>
+      int.tryParse(dotenv.env['BARCODE_SHEET_GID'] ?? '') ?? 0;
+  static int get _generalProductsSheetGid =>
+      int.tryParse(dotenv.env['GENERAL_PRODUCTS_SHEET_GID'] ?? '') ?? 0;
 
   /// Fetch products with barcodes from the barcode sheet
   Future<List<Product>> fetchBarcodeProducts() async {
