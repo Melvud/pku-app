@@ -1,4 +1,5 @@
 // lib/services/multi_source_barcode_service.dart
+import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import 'open_food_facts_service.dart';
 import 'barcode_lookup_service.dart';
@@ -23,7 +24,7 @@ class MultiSourceBarcodeService {
         );
       }
     } catch (e) {
-      print('FatSecret failed: $e');
+      debugPrint('FatSecret failed: $e');
     }
 
     // 2. Пробуем USDA FoodData Central (обширная база данных США)
@@ -37,7 +38,7 @@ class MultiSourceBarcodeService {
         );
       }
     } catch (e) {
-      print('USDA failed: $e');
+      debugPrint('USDA failed: $e');
     }
 
     // 3. Пробуем Open Food Facts (международная база данных)
@@ -51,7 +52,7 @@ class MultiSourceBarcodeService {
         );
       }
     } catch (e) {
-      print('Open Food Facts failed: $e');
+      debugPrint('Open Food Facts failed: $e');
     }
 
     // 4. Пробуем UPCitemdb (только название, без пищевой ценности)
@@ -65,7 +66,7 @@ class MultiSourceBarcodeService {
         );
       }
     } catch (e) {
-      print('UPCitemdb failed: $e');
+      debugPrint('UPCitemdb failed: $e');
     }
 
     // 5. Ничего не найдено - возвращаем заготовку для ручного ввода

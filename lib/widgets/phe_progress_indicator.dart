@@ -42,29 +42,41 @@ class PheProgressIndicator extends StatelessWidget {
                           value: progress,
                           strokeWidth: 12,
                           backgroundColor: Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(progressColor),
                         ),
                       ),
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${current.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            current.toStringAsFixed(0),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: progressColor,
                                 ),
                           ),
                           Text(
                             'из ${limit.toStringAsFixed(0)} мг',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '${(progress * 100).toStringAsFixed(0)}%',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -74,19 +86,21 @@ class PheProgressIndicator extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Remaining Phe
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: progressColor.withOpacity(0.1),
+                    color: progressColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        remaining > 0 ? Icons.check_circle_outline : Icons.warning_amber,
+                        remaining > 0
+                            ? Icons.check_circle_outline
+                            : Icons.warning_amber,
                         color: progressColor,
                       ),
                       const SizedBox(width: 8),

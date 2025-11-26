@@ -18,7 +18,8 @@ class EditProductPortionScreen extends StatefulWidget {
   });
 
   @override
-  State<EditProductPortionScreen> createState() => _EditProductPortionScreenState();
+  State<EditProductPortionScreen> createState() =>
+      _EditProductPortionScreenState();
 }
 
 class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
@@ -73,15 +74,22 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
     try {
       // Если были изменения в данных продукта, сохраняем их
       if (_isEditing) {
-        final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
+        final productsProvider =
+            Provider.of<ProductsProvider>(context, listen: false);
         final updatedProduct = widget.product.copyWith(
           pheEstimatedPer100g: double.parse(_pheController.text),
           proteinPer100g: double.parse(_proteinController.text),
-          fatPer100g: _fatController.text.isNotEmpty ? double.parse(_fatController.text) : null,
-          carbsPer100g: _carbsController.text.isNotEmpty ? double.parse(_carbsController.text) : null,
-          caloriesPer100g: _caloriesController.text.isNotEmpty ? double.parse(_caloriesController.text) : null,
+          fatPer100g: _fatController.text.isNotEmpty
+              ? double.parse(_fatController.text)
+              : null,
+          carbsPer100g: _carbsController.text.isNotEmpty
+              ? double.parse(_carbsController.text)
+              : null,
+          caloriesPer100g: _caloriesController.text.isNotEmpty
+              ? double.parse(_caloriesController.text)
+              : null,
         );
-        
+
         if (widget.product.id.isNotEmpty) {
           await productsProvider.updateProduct(updatedProduct);
         } else {
@@ -89,6 +97,7 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
         }
       }
 
+      if (!mounted) return;
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
 
       await diaryProvider.addCustomEntry(
@@ -97,14 +106,14 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
         pheUsedPer100g: double.parse(_pheController.text),
         proteinPer100g: double.parse(_proteinController.text),
         mealType: widget.mealType,
-        fatPer100g: _fatController.text.isNotEmpty 
-            ? double.parse(_fatController.text) 
+        fatPer100g: _fatController.text.isNotEmpty
+            ? double.parse(_fatController.text)
             : null,
-        carbsPer100g: _carbsController.text.isNotEmpty 
-            ? double.parse(_carbsController.text) 
+        carbsPer100g: _carbsController.text.isNotEmpty
+            ? double.parse(_carbsController.text)
             : null,
-        caloriesPer100g: _caloriesController.text.isNotEmpty 
-            ? double.parse(_caloriesController.text) 
+        caloriesPer100g: _caloriesController.text.isNotEmpty
+            ? double.parse(_caloriesController.text)
             : null,
       );
 
@@ -112,7 +121,8 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${widget.product.name} добавлен в ${widget.mealType.displayName}'),
+            content: Text(
+                '${widget.product.name} добавлен в ${widget.mealType.displayName}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -146,7 +156,8 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
               padding: const EdgeInsets.only(right: 8.0),
               child: Chip(
                 avatar: const Icon(Icons.public, size: 16),
-                label: const Text('Open Food Facts', style: TextStyle(fontSize: 11)),
+                label: const Text('Open Food Facts',
+                    style: TextStyle(fontSize: 11)),
                 backgroundColor: Colors.green.shade100,
               ),
             ),
@@ -173,7 +184,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        isFromOpenFoodFacts ? Icons.cloud_done : Icons.check_circle,
+                        isFromOpenFoodFacts
+                            ? Icons.cloud_done
+                            : Icons.check_circle,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                       const SizedBox(width: 12),
@@ -184,7 +197,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                             Text(
                               widget.product.name,
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -192,7 +207,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                             Text(
                               'Добавление в: ${widget.mealType.displayName}',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
                                 fontSize: 12,
                               ),
                             ),
@@ -201,7 +218,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                               Text(
                                 '💾 Автоматически сохранен в вашу базу',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -209,7 +228,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                               Text(
                                 '⚠️ Phe рассчитан автоматически, можно откорректировать',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
                                   fontSize: 11,
                                   fontStyle: FontStyle.italic,
                                 ),
@@ -223,10 +244,10 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               TextFormField(
                 controller: _portionController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -249,7 +270,6 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 },
               ),
               const SizedBox(height: 24),
-
               Row(
                 children: [
                   Text(
@@ -261,7 +281,8 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                   const Spacer(),
                   if (_isEditing)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade100,
                         borderRadius: BorderRadius.circular(12),
@@ -289,11 +310,11 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _pheController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -301,7 +322,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                   labelText: 'Фенилаланин (Phe) *',
                   suffixText: 'мг на 100г',
                   prefixIcon: const Icon(Icons.medical_information),
-                  helperText: isFromOpenFoodFacts ? 'Оценочное значение, рекомендуем проверить' : null,
+                  helperText: isFromOpenFoodFacts
+                      ? 'Оценочное значение, рекомендуем проверить'
+                      : null,
                 ),
                 onChanged: (value) => setState(() {}),
                 validator: (value) {
@@ -316,11 +339,11 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _proteinController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -342,11 +365,11 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _fatController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -358,11 +381,11 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 onChanged: (value) => setState(() {}),
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _carbsController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -374,11 +397,11 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 onChanged: (value) => setState(() {}),
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _caloriesController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -390,11 +413,10 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 onChanged: (value) => setState(() {}),
               ),
               const SizedBox(height: 24),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -409,14 +431,16 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                     const SizedBox(height: 12),
                     _CalculatedRow(
                       label: 'Фенилаланин (Phe)',
-                      value: (double.tryParse(_pheController.text) ?? 0) * multiplier,
+                      value: (double.tryParse(_pheController.text) ?? 0) *
+                          multiplier,
                       unit: 'мг',
                       color: Colors.purple,
                     ),
                     const SizedBox(height: 8),
                     _CalculatedRow(
                       label: 'Белок',
-                      value: (double.tryParse(_proteinController.text) ?? 0) * multiplier,
+                      value: (double.tryParse(_proteinController.text) ?? 0) *
+                          multiplier,
                       unit: 'г',
                       color: Colors.blue,
                     ),
@@ -424,7 +448,8 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                       const SizedBox(height: 8),
                       _CalculatedRow(
                         label: 'Жиры',
-                        value: (double.tryParse(_fatController.text) ?? 0) * multiplier,
+                        value: (double.tryParse(_fatController.text) ?? 0) *
+                            multiplier,
                         unit: 'г',
                         color: Colors.amber,
                       ),
@@ -433,7 +458,8 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                       const SizedBox(height: 8),
                       _CalculatedRow(
                         label: 'Углеводы',
-                        value: (double.tryParse(_carbsController.text) ?? 0) * multiplier,
+                        value: (double.tryParse(_carbsController.text) ?? 0) *
+                            multiplier,
                         unit: 'г',
                         color: Colors.green,
                       ),
@@ -442,7 +468,9 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                       const SizedBox(height: 8),
                       _CalculatedRow(
                         label: 'Калории',
-                        value: (double.tryParse(_caloriesController.text) ?? 0) * multiplier,
+                        value:
+                            (double.tryParse(_caloriesController.text) ?? 0) *
+                                multiplier,
                         unit: 'ккал',
                         color: Colors.orange,
                       ),
@@ -451,7 +479,6 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
               FilledButton(
                 onPressed: _isLoading ? null : _handleSubmit,
                 style: FilledButton.styleFrom(

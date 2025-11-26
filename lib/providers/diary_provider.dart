@@ -30,10 +30,11 @@ class DiaryProvider with ChangeNotifier {
   // Load meal sessions from SharedPreferences for specific date
   Future<void> _loadMealSessions() async {
     try {
-      final dateKey = _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
+      final dateKey =
+          _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
       final prefs = await SharedPreferences.getInstance();
       final savedSessions = prefs.getString('meal_sessions_$dateKey');
-      
+
       if (savedSessions != null) {
         final List<dynamic> decoded = json.decode(savedSessions);
         _mealSessions = decoded.map((e) => MealSession.fromJson(e)).toList();
@@ -52,9 +53,11 @@ class DiaryProvider with ChangeNotifier {
   // Save meal sessions to SharedPreferences for specific date
   Future<void> _saveMealSessions() async {
     try {
-      final dateKey = _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
+      final dateKey =
+          _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
       final prefs = await SharedPreferences.getInstance();
-      final encoded = json.encode(_mealSessions.map((e) => e.toJson()).toList());
+      final encoded =
+          json.encode(_mealSessions.map((e) => e.toJson()).toList());
       await prefs.setString('meal_sessions_$dateKey', encoded);
     } catch (e) {
       debugPrint('Error saving meal sessions: $e');
@@ -75,7 +78,7 @@ class DiaryProvider with ChangeNotifier {
       order: _mealSessions.length,
       date: _selectedDate,
     );
-    
+
     _mealSessions.add(newSession);
     await _saveMealSessions();
     notifyListeners();
@@ -129,36 +132,41 @@ class DiaryProvider with ChangeNotifier {
 
   // Calculate total Phe for the selected date
   double get totalPheToday {
-    return _entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
+    return _entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
   }
 
   // Calculate total protein for the selected date
   double get totalProteinToday {
-    return _entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
+    return _entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
   }
 
   // Calculate total calories for the selected date
   double get totalCaloriesToday {
-    return _entries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0));
+    return _entries.fold(
+        0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
   }
 
   // Calculate total fat for the selected date
   double get totalFatToday {
-    return _entries.fold(0.0, (sum, entry) => sum + (entry.fatInPortion ?? 0));
+    return _entries.fold(
+        0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
   }
 
   // Calculate total carbs for the selected date
   double get totalCarbsToday {
-    return _entries.fold(0.0, (sum, entry) => sum + (entry.carbsInPortion ?? 0));
+    return _entries.fold(
+        0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
   }
 
   // Get statistics for a specific meal
   Map<String, double> getMealStats(MealType mealType) {
     final mealEntries = getEntriesForMeal(mealType);
     return {
-      'phe': mealEntries.fold(0.0, (sum, entry) => sum + entry.pheInPortion),
-      'protein': mealEntries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion),
-      'calories': mealEntries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0)),
+      'phe': mealEntries.fold(0.0, (total, e) => total + e.pheInPortion),
+      'protein':
+          mealEntries.fold(0.0, (total, e) => total + e.proteinInPortion),
+      'calories': mealEntries.fold(
+          0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
     };
   }
 
@@ -184,14 +192,14 @@ class DiaryProvider with ChangeNotifier {
       final snapshot = await _firestore
           .collection('diary_entries')
           .where('userId', isEqualTo: _auth.currentUser!.uid)
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('timestamp',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
           .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
           .orderBy('timestamp', descending: false)
           .get();
 
-      _entries = snapshot.docs
-          .map((doc) => DiaryEntry.fromFirestore(doc))
-          .toList();
+      _entries =
+          snapshot.docs.map((doc) => DiaryEntry.fromFirestore(doc)).toList();
 
       debugPrint('✅ Loaded ${_entries.length} entries for ${date.toLocal()}');
     } catch (e) {
@@ -217,9 +225,14 @@ class DiaryProvider with ChangeNotifier {
       final multiplier = portionG / 100.0;
       final pheInPortion = product.pheToUse * multiplier;
       final proteinInPortion = product.proteinPer100g * multiplier;
-      final fatInPortion = product.fatPer100g != null ? product.fatPer100g! * multiplier : null;
-      final carbsInPortion = product.carbsPer100g != null ? product.carbsPer100g! * multiplier : null;
-      final caloriesInPortion = product.caloriesPer100g != null ? product.caloriesPer100g! * multiplier : null;
+      final fatInPortion =
+          product.fatPer100g != null ? product.fatPer100g! * multiplier : null;
+      final carbsInPortion = product.carbsPer100g != null
+          ? product.carbsPer100g! * multiplier
+          : null;
+      final caloriesInPortion = product.caloriesPer100g != null
+          ? product.caloriesPer100g! * multiplier
+          : null;
 
       final entry = DiaryEntry(
         id: '',
@@ -271,8 +284,10 @@ class DiaryProvider with ChangeNotifier {
       final pheInPortion = pheUsedPer100g * multiplier;
       final proteinInPortion = proteinPer100g * multiplier;
       final fatInPortion = fatPer100g != null ? fatPer100g * multiplier : null;
-      final carbsInPortion = carbsPer100g != null ? carbsPer100g * multiplier : null;
-      final caloriesInPortion = caloriesPer100g != null ? caloriesPer100g * multiplier : null;
+      final carbsInPortion =
+          carbsPer100g != null ? carbsPer100g * multiplier : null;
+      final caloriesInPortion =
+          caloriesPer100g != null ? caloriesPer100g * multiplier : null;
 
       final entry = DiaryEntry(
         id: '',
@@ -335,8 +350,10 @@ class DiaryProvider with ChangeNotifier {
       final pheInPortion = pheUsedPer100g * multiplier;
       final proteinInPortion = proteinPer100g * multiplier;
       final fatInPortion = fatPer100g != null ? fatPer100g * multiplier : null;
-      final carbsInPortion = carbsPer100g != null ? carbsPer100g * multiplier : null;
-      final caloriesInPortion = caloriesPer100g != null ? caloriesPer100g * multiplier : null;
+      final carbsInPortion =
+          carbsPer100g != null ? carbsPer100g * multiplier : null;
+      final caloriesInPortion =
+          caloriesPer100g != null ? caloriesPer100g * multiplier : null;
 
       await _firestore.collection('diary_entries').doc(entryId).update({
         'productName': productName,
@@ -369,13 +386,14 @@ class DiaryProvider with ChangeNotifier {
       final snapshot = await _firestore
           .collection('diary_entries')
           .where('userId', isEqualTo: _auth.currentUser!.uid)
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
-          .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(endOfMonth))
+          .where('timestamp',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+          .where('timestamp',
+              isLessThanOrEqualTo: Timestamp.fromDate(endOfMonth))
           .get();
 
-      final entries = snapshot.docs
-          .map((doc) => DiaryEntry.fromFirestore(doc))
-          .toList();
+      final entries =
+          snapshot.docs.map((doc) => DiaryEntry.fromFirestore(doc)).toList();
 
       // Group by day
       final Map<int, List<DiaryEntry>> dailyEntries = {};
@@ -391,20 +409,29 @@ class DiaryProvider with ChangeNotifier {
         final dayEntries = dailyEntries[day] ?? [];
         dailyStats.add({
           'day': day,
-          'phe': dayEntries.fold(0.0, (sum, e) => sum + e.pheInPortion),
-          'protein': dayEntries.fold(0.0, (sum, e) => sum + e.proteinInPortion),
-          'fat': dayEntries.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
-          'carbs': dayEntries.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
-          'calories': dayEntries.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
+          'phe': dayEntries.fold(0.0, (total, e) => total + e.pheInPortion),
+          'protein':
+              dayEntries.fold(0.0, (total, e) => total + e.proteinInPortion),
+          'fat':
+              dayEntries.fold(0.0, (total, e) => total + (e.fatInPortion ?? 0)),
+          'carbs': dayEntries.fold(
+              0.0, (total, e) => total + (e.carbsInPortion ?? 0)),
+          'calories': dayEntries.fold(
+              0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
           'entriesCount': dayEntries.length,
         });
       }
 
-      final totalPhe = entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
-      final totalProtein = entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
-      final totalFat = entries.fold(0.0, (sum, entry) => sum + (entry.fatInPortion ?? 0));
-      final totalCarbs = entries.fold(0.0, (sum, entry) => sum + (entry.carbsInPortion ?? 0));
-      final totalCalories = entries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0));
+      final totalPhe =
+          entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
+      final totalProtein =
+          entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
+      final totalFat = entries.fold(
+          0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
+      final totalCarbs = entries.fold(
+          0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
+      final totalCalories = entries.fold(
+          0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
       final daysCount = endOfMonth.day;
       final activeDays = dailyEntries.length;
 
@@ -430,12 +457,14 @@ class DiaryProvider with ChangeNotifier {
   }
 
   // Get statistics for a date range
-  Future<Map<String, dynamic>> getDateRangeStats(DateTime startDate, DateTime endDate) async {
+  Future<Map<String, dynamic>> getDateRangeStats(
+      DateTime startDate, DateTime endDate) async {
     if (_auth.currentUser == null) return {};
 
     try {
       final start = DateTime(startDate.year, startDate.month, startDate.day);
-      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      final end =
+          DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
 
       final snapshot = await _firestore
           .collection('diary_entries')
@@ -444,17 +473,18 @@ class DiaryProvider with ChangeNotifier {
           .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end))
           .get();
 
-      final entries = snapshot.docs
-          .map((doc) => DiaryEntry.fromFirestore(doc))
-          .toList();
+      final entries =
+          snapshot.docs.map((doc) => DiaryEntry.fromFirestore(doc)).toList();
 
       // Group by date
       final Map<String, List<DiaryEntry>> dailyEntries = {};
       final Map<String, List<DiaryEntry>> monthlyEntries = {};
 
       for (var entry in entries) {
-        final dateKey = '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}-${entry.timestamp.day.toString().padLeft(2, '0')}';
-        final monthKey = '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}';
+        final dateKey =
+            '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}-${entry.timestamp.day.toString().padLeft(2, '0')}';
+        final monthKey =
+            '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}';
 
         dailyEntries.putIfAbsent(dateKey, () => []);
         dailyEntries[dateKey]!.add(entry);
@@ -467,7 +497,8 @@ class DiaryProvider with ChangeNotifier {
       final List<Map<String, dynamic>> dailyStats = [];
       DateTime current = start;
       while (current.isBefore(end) || current.isAtSameMomentAs(end)) {
-        final dateKey = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+        final dateKey =
+            '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
         final dayEntries = dailyEntries[dateKey] ?? [];
 
         dailyStats.add({
@@ -475,11 +506,15 @@ class DiaryProvider with ChangeNotifier {
           'day': current.day,
           'month': current.month,
           'year': current.year,
-          'phe': dayEntries.fold(0.0, (sum, e) => sum + e.pheInPortion),
-          'protein': dayEntries.fold(0.0, (sum, e) => sum + e.proteinInPortion),
-          'fat': dayEntries.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
-          'carbs': dayEntries.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
-          'calories': dayEntries.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
+          'phe': dayEntries.fold(0.0, (total, e) => total + e.pheInPortion),
+          'protein':
+              dayEntries.fold(0.0, (total, e) => total + e.proteinInPortion),
+          'fat':
+              dayEntries.fold(0.0, (total, e) => total + (e.fatInPortion ?? 0)),
+          'carbs': dayEntries.fold(
+              0.0, (total, e) => total + (e.carbsInPortion ?? 0)),
+          'calories': dayEntries.fold(
+              0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
           'entriesCount': dayEntries.length,
         });
 
@@ -499,21 +534,33 @@ class DiaryProvider with ChangeNotifier {
         monthlyStats.add({
           'year': year,
           'month': month,
-          'totalPhe': monthEntriesData.fold(0.0, (sum, e) => sum + e.pheInPortion),
-          'totalProtein': monthEntriesData.fold(0.0, (sum, e) => sum + e.proteinInPortion),
-          'totalFat': monthEntriesData.fold(0.0, (sum, e) => sum + (e.fatInPortion ?? 0)),
-          'totalCarbs': monthEntriesData.fold(0.0, (sum, e) => sum + (e.carbsInPortion ?? 0)),
-          'totalCalories': monthEntriesData.fold(0.0, (sum, e) => sum + (e.caloriesInPortion ?? 0)),
-          'avgPhePerDay': monthEntriesData.fold(0.0, (sum, e) => sum + e.pheInPortion) / daysInMonth,
+          'totalPhe':
+              monthEntriesData.fold(0.0, (total, e) => total + e.pheInPortion),
+          'totalProtein': monthEntriesData.fold(
+              0.0, (total, e) => total + e.proteinInPortion),
+          'totalFat': monthEntriesData.fold(
+              0.0, (total, e) => total + (e.fatInPortion ?? 0)),
+          'totalCarbs': monthEntriesData.fold(
+              0.0, (total, e) => total + (e.carbsInPortion ?? 0)),
+          'totalCalories': monthEntriesData.fold(
+              0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
+          'avgPhePerDay':
+              monthEntriesData.fold(0.0, (total, e) => total + e.pheInPortion) /
+                  daysInMonth,
           'entriesCount': monthEntriesData.length,
         });
       }
 
-      final totalPhe = entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
-      final totalProtein = entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
-      final totalFat = entries.fold(0.0, (sum, entry) => sum + (entry.fatInPortion ?? 0));
-      final totalCarbs = entries.fold(0.0, (sum, entry) => sum + (entry.carbsInPortion ?? 0));
-      final totalCalories = entries.fold(0.0, (sum, entry) => sum + (entry.caloriesInPortion ?? 0));
+      final totalPhe =
+          entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
+      final totalProtein =
+          entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
+      final totalFat = entries.fold(
+          0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
+      final totalCarbs = entries.fold(
+          0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
+      final totalCalories = entries.fold(
+          0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
       final daysDifference = end.difference(start).inDays + 1;
       final activeDays = dailyEntries.length;
 
@@ -526,10 +573,12 @@ class DiaryProvider with ChangeNotifier {
         'totalCarbs': totalCarbs,
         'totalCalories': totalCalories,
         'avgPhePerDay': daysDifference > 0 ? totalPhe / daysDifference : 0,
-        'avgProteinPerDay': daysDifference > 0 ? totalProtein / daysDifference : 0,
+        'avgProteinPerDay':
+            daysDifference > 0 ? totalProtein / daysDifference : 0,
         'avgFatPerDay': daysDifference > 0 ? totalFat / daysDifference : 0,
         'avgCarbsPerDay': daysDifference > 0 ? totalCarbs / daysDifference : 0,
-        'avgCaloriesPerDay': daysDifference > 0 ? totalCalories / daysDifference : 0,
+        'avgCaloriesPerDay':
+            daysDifference > 0 ? totalCalories / daysDifference : 0,
         'activeDays': activeDays,
         'totalDays': daysDifference,
         'dailyStats': dailyStats,

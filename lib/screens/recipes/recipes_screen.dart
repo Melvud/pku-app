@@ -353,7 +353,7 @@ class _RecipeCard extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          color.withOpacity(0.7),
+                          color.withValues(alpha: 0.7),
                           color,
                         ],
                       )
@@ -376,7 +376,7 @@ class _RecipeCard extends StatelessWidget {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                color.withOpacity(0.7),
+                                color.withValues(alpha: 0.7),
                                 color,
                               ],
                             ),

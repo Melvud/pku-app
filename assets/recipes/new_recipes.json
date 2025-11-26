@@ -1,0 +1,147 @@
+[
+    {
+        "_documentation": {
+            "description": "Этот файл используется для автоматической загрузки рецептов при запуске приложения.",
+            "fields": {
+                "name": "Название рецепта (обязательно). Уникальное, используется для проверки дубликатов.",
+                "description": "Описание рецепта.",
+                "category": "Категория рецепта. Возможные значения: breakfast (Завтраки), lunch (Обеды), dinner (Ужины), snack (Перекусы), dessert (Десерты), baking (Выпечка), salad (Салаты), soup (Супы).",
+                "ingredients": "Список ингредиентов. Каждый ингредиент имеет name, amount, unit.",
+                "unit": "Единица измерения. Возможные значения: г, мл, шт, ч.л., ст.л.",
+                "instructions": "Список текстовых инструкций (устаревший формат, но поддерживается).",
+                "steps": "Список шагов с картинками. Предпочтительный формат. Каждый шаг имеет instruction и imageUrl.",
+                "imageUrl": "Ссылка на картинку. Может быть URL (https://...) или путь к файлу в assets (assets/recipes/uploads/image.jpg).",
+                "servings": "Количество порций (число).",
+                "cookingTimeMinutes": "Время приготовления в минутах (число).",
+                "phePer100g": "Фенилаланин на 100г (число).",
+                "proteinPer100g": "Белок на 100г (число).",
+                "fatPer100g": "Жиры на 100г (число, необязательно).",
+                "carbsPer100g": "Углеводы на 100г (число, необязательно).",
+                "caloriesPer100g": "Калории на 100г (число, необязательно)."
+            },
+            "image_upload": "Для загрузки картинок поместите их в папку assets/recipes/uploads/ и укажите путь в поле imageUrl, например: assets/recipes/uploads/my_cake.jpg. Приложение автоматически загрузит их в базу данных."
+        }
+    },
+    {
+        "name": "Овсяная каша с ягодами",
+        "description": "Идеальный завтрак для начала дня.",
+        "category": "breakfast",
+        "ingredients": [
+            {
+                "name": "Овсяные хлопья (низкобелковые)",
+                "amount": 50,
+                "unit": "г"
+            },
+            {
+                "name": "Молоко (низкобелковое)",
+                "amount": 200,
+                "unit": "мл"
+            },
+            {
+                "name": "Ягоды",
+                "amount": 50,
+                "unit": "г"
+            }
+        ],
+        "steps": [
+            {
+                "instruction": "Смешать хлопья с молоком в кастрюле.",
+                "imageUrl": "assets/recipes/uploads/oatmeal_step1.jpg"
+            },
+            {
+                "instruction": "Варить на медленном огне 5-7 минут.",
+                "imageUrl": ""
+            },
+            {
+                "instruction": "Добавить ягоды перед подачей.",
+                "imageUrl": "assets/recipes/uploads/oatmeal_final.jpg"
+            }
+        ],
+        "servings": 1,
+        "cookingTimeMinutes": 10,
+        "phePer100g": 5.0,
+        "proteinPer100g": 0.5,
+        "fatPer100g": 2.0,
+        "carbsPer100g": 15.0,
+        "caloriesPer100g": 80.0,
+        "imageUrl": "assets/recipes/uploads/oatmeal_cover.jpg"
+    },
+    {
+        "name": "Овощной суп-пюре",
+        "description": "Легкий и сытный суп на обед.",
+        "category": "soup",
+        "ingredients": [
+            {
+                "name": "Картофель",
+                "amount": 200,
+                "unit": "г"
+            },
+            {
+                "name": "Морковь",
+                "amount": 100,
+                "unit": "г"
+            },
+            {
+                "name": "Лук",
+                "amount": 50,
+                "unit": "г"
+            }
+        ],
+        "steps": [
+            {
+                "instruction": "Нарезать овощи кубиками.",
+                "imageUrl": ""
+            },
+            {
+                "instruction": "Отварить до готовности.",
+                "imageUrl": ""
+            },
+            {
+                "instruction": "Пюрировать блендером.",
+                "imageUrl": ""
+            }
+        ],
+        "servings": 2,
+        "cookingTimeMinutes": 30,
+        "phePer100g": 25.0,
+        "proteinPer100g": 1.2,
+        "imageUrl": "assets/recipes/uploads/soup_cover.jpg"
+    },
+    {
+        "name": "Фруктовый салат",
+        "description": "Сладкий и полезный десерт.",
+        "category": "dessert",
+        "ingredients": [
+            {
+                "name": "Яблоко",
+                "amount": 100,
+                "unit": "г"
+            },
+            {
+                "name": "Банан",
+                "amount": 100,
+                "unit": "г"
+            },
+            {
+                "name": "Груша",
+                "amount": 100,
+                "unit": "г"
+            }
+        ],
+        "steps": [
+            {
+                "instruction": "Нарезать фрукты кубиками.",
+                "imageUrl": ""
+            },
+            {
+                "instruction": "Смешать в миске.",
+                "imageUrl": ""
+            }
+        ],
+        "servings": 2,
+        "cookingTimeMinutes": 10,
+        "phePer100g": 15.0,
+        "proteinPer100g": 0.8,
+        "imageUrl": "assets/recipes/uploads/fruit_salad.jpg"
+    }
+]

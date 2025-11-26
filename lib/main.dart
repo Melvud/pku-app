@@ -10,8 +10,9 @@ import 'providers/user_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/products_provider.dart';
 import 'providers/diary_provider.dart';
-import 'providers/recipes_provider.dart';  // ✅ Добавить импорт
+import 'providers/recipes_provider.dart'; // ✅ Добавить импорт
 import 'providers/admin_provider.dart';
+import 'services/recipe_loader_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/articles/articles_screen.dart';
@@ -25,15 +26,23 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Включаем offline persistence для Firestore
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
-  
+
   await initializeDateFormatting('ru', null);
-  
+
+  // Auto-load recipes from assets
+  try {
+    final recipeLoader = RecipeLoaderService();
+    await recipeLoader.loadRecipes();
+  } catch (e) {
+    debugPrint('Failed to auto-load recipes: $e');
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -41,7 +50,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => DiaryProvider()),
-        ChangeNotifierProvider(create: (_) => RecipesProvider()),  // ✅ Добавить провайдер
+        ChangeNotifierProvider(create: (_) => RecipesProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const PheTrackerApp(),
@@ -107,11 +116,11 @@ class PheTrackerApp extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          
+
           if (snapshot.hasData) {
             return const MainNavigationScreen();
           }
-          
+
           return const LoginScreen();
         },
       ),

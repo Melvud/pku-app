@@ -68,7 +68,8 @@ class Product {
       caloriesPer100g: data['caloriesPer100g']?.toDouble(),
       notes: data['notes'],
       source: data['source'],
-      lastUpdated: (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastUpdated:
+          (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
       googleSheetsId: data['googleSheetsId'],
       barcode: data['barcode'],
     );
@@ -78,7 +79,7 @@ class Product {
     final googleSheetsId = 'row_$rowIndex';
     return Product(
       id: '',
-      name: row.length > 0 ? row[0].toString() : '',
+      name: row.isNotEmpty ? row[0].toString() : '',
       category: row.length > 1 ? row[1].toString() : 'other',
       proteinPer100g: row.length > 2 ? _parseDouble(row[2]) : 0.0,
       pheMeasuredPer100g: row.length > 3 ? _parseDouble(row[3]) : null,
@@ -102,7 +103,7 @@ class Product {
 
     final nutriments = product['nutriments'] as Map<String, dynamic>? ?? {};
     final proteinPer100g = (nutriments['proteins_100g'] ?? 0).toDouble();
-    
+
     // Оценочный расчет Phe: примерно 50 мг на 1 г белка
     final estimatedPhe = proteinPer100g * 50;
 
@@ -126,12 +127,16 @@ class Product {
 
   static String _mapOpenFoodFactsCategory(String categories) {
     final lowerCategories = categories.toLowerCase();
-    if (lowerCategories.contains('fruit') || lowerCategories.contains('фрукт')) {
+    if (lowerCategories.contains('fruit') ||
+        lowerCategories.contains('фрукт')) {
       return 'fruits';
-    } else if (lowerCategories.contains('vegetable') || lowerCategories.contains('овощ')) {
+    } else if (lowerCategories.contains('vegetable') ||
+        lowerCategories.contains('овощ')) {
       return 'vegetables';
-    } else if (lowerCategories.contains('grain') || lowerCategories.contains('зерно') || 
-               lowerCategories.contains('хлеб') || lowerCategories.contains('bread')) {
+    } else if (lowerCategories.contains('grain') ||
+        lowerCategories.contains('зерно') ||
+        lowerCategories.contains('хлеб') ||
+        lowerCategories.contains('bread')) {
       return 'grains';
     }
     return 'other';
@@ -179,8 +184,8 @@ class Product {
 
   factory Product.fromUSDA(Map<String, dynamic> data) {
     final description = data['description'] as String? ??
-                       data['lowercaseDescription'] as String? ??
-                       'Неизвестный продукт';
+        data['lowercaseDescription'] as String? ??
+        'Неизвестный продукт';
 
     final nutrients = data['foodNutrients'] as List<dynamic>? ?? [];
 
@@ -192,7 +197,8 @@ class Product {
     for (var nutrient in nutrients) {
       final nutrientData = nutrient is Map<String, dynamic> ? nutrient : {};
       final nutrientId = nutrientData['nutrientId'] as int? ??
-                        nutrientData['nutrientNumber'] as int? ?? 0;
+          nutrientData['nutrientNumber'] as int? ??
+          0;
       final value = _parseDouble(nutrientData['value']);
 
       switch (nutrientId) {
@@ -251,14 +257,15 @@ class Product {
     } else if (lowerCategory.contains('vegetable')) {
       return 'vegetables';
     } else if (lowerCategory.contains('grain') ||
-               lowerCategory.contains('bread') ||
-               lowerCategory.contains('cereal')) {
+        lowerCategory.contains('bread') ||
+        lowerCategory.contains('cereal')) {
       return 'grains';
-    } else if (lowerCategory.contains('dairy') || lowerCategory.contains('milk')) {
+    } else if (lowerCategory.contains('dairy') ||
+        lowerCategory.contains('milk')) {
       return 'dairy';
     } else if (lowerCategory.contains('meat') ||
-               lowerCategory.contains('poultry') ||
-               lowerCategory.contains('fish')) {
+        lowerCategory.contains('poultry') ||
+        lowerCategory.contains('fish')) {
       return 'protein';
     }
     return 'other';

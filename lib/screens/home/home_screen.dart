@@ -35,14 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
       // Check if we already have data loaded
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
-      
+
       // If we already have profile and diary entries for today, skip loading
       final hasProfile = userProvider.userProfile != null;
       final today = DateTime.now();
       final hasEntries = diaryProvider.selectedDate.year == today.year &&
-                        diaryProvider.selectedDate.month == today.month &&
-                        diaryProvider.selectedDate.day == today.day;
-      
+          diaryProvider.selectedDate.month == today.month &&
+          diaryProvider.selectedDate.day == today.day;
+
       if (hasProfile && hasEntries && _isLoading) {
         // Data already loaded, just update UI state
         if (mounted) {
@@ -50,13 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return;
       }
-      
+
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
+      final authProvider =
+          Provider.of<UserAuthProvider>(context, listen: false);
       final profile = await authProvider.getUserProfile().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -70,12 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (mounted) {
-        await diaryProvider
-            .loadEntriesForDate(DateTime.now())
-            .timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => debugPrint('⚠️ Diary loading timeout'),
-        );
+        await diaryProvider.loadEntriesForDate(DateTime.now()).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => debugPrint('⚠️ Diary loading timeout'),
+            );
       }
 
       if (mounted) {
@@ -135,7 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Text(
                   'Добавить в ${session.displayName}',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -151,7 +151,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.qr_code_scanner, color: Colors.orange.shade700),
+                  child: Icon(Icons.qr_code_scanner,
+                      color: Colors.orange.shade700),
                 ),
                 title: const Text('Сканировать штрихкод'),
                 subtitle: const Text('Быстрый поиск по штрихкоду'),
@@ -200,7 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.add_circle_outline, color: Colors.green),
+                  child:
+                      const Icon(Icons.add_circle_outline, color: Colors.green),
                 ),
                 title: const Text('Добавить свой продукт'),
                 subtitle: const Text('Ввести данные вручную'),
@@ -297,14 +299,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedTime.hour,
                     selectedTime.minute,
                   );
-                  
+
                   await Provider.of<DiaryProvider>(context, listen: false)
                       .addMealSession(
                     type: selectedType,
                     customName: nameController.text,
                     time: time,
                   );
-                  
+
                   if (mounted) {
                     Navigator.pop(context);
                   }
@@ -467,7 +469,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-
                 SliverToBoxAdapter(
                   child: Container(
                     margin: const EdgeInsets.all(16),
@@ -476,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -509,14 +510,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Icon(
                                       Icons.calendar_today,
                                       size: 20,
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       _isToday(diaryProvider.selectedDate)
                                           ? 'Сегодня (${DateFormat('d MMM', 'ru').format(diaryProvider.selectedDate)})'
                                           : DateFormat('d MMMM, yyyy', 'ru')
-                                              .format(diaryProvider.selectedDate),
+                                              .format(
+                                                  diaryProvider.selectedDate),
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -546,7 +549,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -560,7 +562,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 SliverPadding(
                   padding: const EdgeInsets.all(16),
                   sliver: SliverList(
@@ -574,7 +575,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.only(bottom: 16),
                           child: _MealCard(
                             session: session,
-                            entries: diaryProvider.getEntriesForMealSession(session.id),
+                            entries: diaryProvider
+                                .getEntriesForMealSession(session.id),
                             mealNumber: index + 1,
                             onAddPressed: () =>
                                 _showAddProductOptions(context, session),
@@ -584,7 +586,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => EditDiaryEntryScreen(entry: entry),
+                                  builder: (context) =>
+                                      EditDiaryEntryScreen(entry: entry),
                                 ),
                               );
                             },
@@ -593,8 +596,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('Удалить прием пищи?'),
-                                  content: Text(
-                                      'Удалить "${session.displayName}"?'),
+                                  content:
+                                      Text('Удалить "${session.displayName}"?'),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -612,13 +615,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               );
-                              
+
                               if (confirm == true) {
-                                await diaryProvider.removeMealSession(session.id);
+                                await diaryProvider
+                                    .removeMealSession(session.id);
                               }
                             },
                             onEditTime: () => _editMealTime(session),
-                            onToggleFormula: () => diaryProvider.toggleMealSessionFormula(session.id),
+                            onToggleFormula: () => diaryProvider
+                                .toggleMealSessionFormula(session.id),
                           ),
                         );
                       },
@@ -626,7 +631,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -640,7 +644,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 const SliverToBoxAdapter(
                   child: SizedBox(height: 80),
                 ),
@@ -679,7 +682,7 @@ class _NutritionOverviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -808,7 +811,7 @@ class _MainPheIndicator extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -849,7 +852,7 @@ class _NutrientIndicator extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 24),
@@ -900,7 +903,8 @@ class _MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalPhe = entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
+    final totalPhe =
+        entries.fold(0.0, (sum, entry) => sum + entry.pheInPortion);
     final totalProtein =
         entries.fold(0.0, (sum, entry) => sum + entry.proteinInPortion);
     final color = session.getColor(context);
@@ -911,7 +915,7 @@ class _MealCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -922,7 +926,7 @@ class _MealCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(20)),
             ),
@@ -1031,26 +1035,23 @@ class _MealCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: session.drankFormula 
-                      ? color.withOpacity(0.1)
+                  color: session.drankFormula
+                      ? color.withValues(alpha: 0.1)
                       : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: session.drankFormula 
-                        ? color
-                        : Colors.grey.shade300,
+                    color: session.drankFormula ? color : Colors.grey.shade300,
                     width: 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      session.drankFormula 
-                          ? Icons.check_box 
+                      session.drankFormula
+                          ? Icons.check_box
                           : Icons.check_box_outline_blank,
-                      color: session.drankFormula 
-                          ? color 
-                          : Colors.grey.shade600,
+                      color:
+                          session.drankFormula ? color : Colors.grey.shade600,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
@@ -1059,11 +1060,11 @@ class _MealCard extends StatelessWidget {
                         'Смесь',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: session.drankFormula 
-                              ? FontWeight.w600 
+                          fontWeight: session.drankFormula
+                              ? FontWeight.w600
                               : FontWeight.normal,
-                          color: session.drankFormula 
-                              ? color 
+                          color: session.drankFormula
+                              ? color
                               : Colors.grey.shade700,
                         ),
                       ),
@@ -1168,7 +1169,7 @@ class _MealCard extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(

@@ -185,7 +185,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.7),
+                                Colors.black.withValues(alpha: 0.7),
                               ],
                             ),
                           ),
@@ -220,7 +220,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
+                          color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -336,7 +336,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: color.withOpacity(0.2),
+                                    backgroundColor: color.withValues(alpha: 0.2),
                                     radius: 20,
                                     child: Icon(Icons.person, color: color, size: 20),
                                   ),
@@ -542,7 +542,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.15),
+                              color: color.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -681,7 +681,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.15),
+                            color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -746,7 +746,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.1),
+                                  color: color.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -844,7 +844,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(0.7),
+            color.withValues(alpha: 0.7),
             color,
           ],
         ),
@@ -853,7 +853,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         child: Icon(
           _getCategoryIcon(),
           size: 80,
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
         ),
       ),
     );
@@ -897,7 +897,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: color.withOpacity(0.2),
+                    backgroundColor: color.withValues(alpha: 0.2),
                     radius: 16,
                     child: Icon(Icons.person, color: color, size: 18),
                   ),
@@ -1076,7 +1076,7 @@ class _CompactInfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

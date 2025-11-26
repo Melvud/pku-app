@@ -173,7 +173,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -212,7 +212,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     Text(
                       'Добавление в: ${widget.mealType.displayName}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 14,
                       ),
                       textAlign: TextAlign.center,

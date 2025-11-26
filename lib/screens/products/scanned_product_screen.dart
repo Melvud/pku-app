@@ -45,12 +45,21 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
   bool _isEditing = false;
   bool _isPheCalculated = false;
   bool _hasChanges = false;
-  bool _categorySelected = false; // Track if category was selected for new product
+  bool _categorySelected =
+      false; // Track if category was selected for new product
 
   // PKU-specific categories with Phe coefficients (mg per 1g protein)
   final List<Map<String, dynamic>> _categories = [
-    {'value': 'meat_fish_eggs_cheese', 'label': 'Мясо/рыба/яйца/сыры', 'coefficient': 50},
-    {'value': 'dairy', 'label': 'Молочное (кроме сыров и творога)', 'coefficient': 40},
+    {
+      'value': 'meat_fish_eggs_cheese',
+      'label': 'Мясо/рыба/яйца/сыры',
+      'coefficient': 50
+    },
+    {
+      'value': 'dairy',
+      'label': 'Молочное (кроме сыров и творога)',
+      'coefficient': 40
+    },
     {'value': 'grains_bread', 'label': 'Крупы/хлеб', 'coefficient': 30},
     {'value': 'vegetables', 'label': 'Овощи', 'coefficient': 25},
     {'value': 'fruits', 'label': 'Фрукты', 'coefficient': 25},
@@ -164,7 +173,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
 
     try {
       final product = _buildProduct();
-      final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
+      final productsProvider =
+          Provider.of<ProductsProvider>(context, listen: false);
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
 
       // Save product to user's local database
@@ -177,9 +187,15 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
         pheUsedPer100g: double.parse(_pheController.text),
         proteinPer100g: double.parse(_proteinController.text),
         mealType: widget.mealType,
-        fatPer100g: _fatController.text.isNotEmpty ? double.parse(_fatController.text) : null,
-        carbsPer100g: _carbsController.text.isNotEmpty ? double.parse(_carbsController.text) : null,
-        caloriesPer100g: _caloriesController.text.isNotEmpty ? double.parse(_caloriesController.text) : null,
+        fatPer100g: _fatController.text.isNotEmpty
+            ? double.parse(_fatController.text)
+            : null,
+        carbsPer100g: _carbsController.text.isNotEmpty
+            ? double.parse(_carbsController.text)
+            : null,
+        caloriesPer100g: _caloriesController.text.isNotEmpty
+            ? double.parse(_caloriesController.text)
+            : null,
       );
 
       // If there are changes or it's a new product, submit for moderation
@@ -191,7 +207,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${product.name} добавлен в ${widget.mealType.displayName}'),
+            content: Text(
+                '${product.name} добавлен в ${widget.mealType.displayName}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -247,11 +264,18 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
       name: _nameController.text.trim(),
       category: _selectedCategory,
       proteinPer100g: double.parse(_proteinController.text),
-      pheMeasuredPer100g: _isPheCalculated ? null : double.parse(_pheController.text),
+      pheMeasuredPer100g:
+          _isPheCalculated ? null : double.parse(_pheController.text),
       pheEstimatedPer100g: double.parse(_pheController.text),
-      fatPer100g: _fatController.text.isNotEmpty ? double.parse(_fatController.text) : null,
-      carbsPer100g: _carbsController.text.isNotEmpty ? double.parse(_carbsController.text) : null,
-      caloriesPer100g: _caloriesController.text.isNotEmpty ? double.parse(_caloriesController.text) : null,
+      fatPer100g: _fatController.text.isNotEmpty
+          ? double.parse(_fatController.text)
+          : null,
+      carbsPer100g: _carbsController.text.isNotEmpty
+          ? double.parse(_carbsController.text)
+          : null,
+      caloriesPer100g: _caloriesController.text.isNotEmpty
+          ? double.parse(_caloriesController.text)
+          : null,
       notes: 'Штрих-код: ${widget.barcode}',
       source: widget.source,
       lastUpdated: DateTime.now(),
@@ -306,7 +330,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                     padding: const EdgeInsets.all(12.0),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                        Icon(Icons.info_outline,
+                            color: Colors.blue.shade700, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -381,11 +406,13 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
 
               // Category dropdown with Phe coefficient info
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                key: ValueKey(_selectedCategory),
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Категория *',
                   prefixIcon: const Icon(Icons.category),
-                  helperText: 'Коэффициент: ${_getPheCoefficient(_selectedCategory)} мг Phe на 1г белка',
+                  helperText:
+                      'Коэффициент: ${_getPheCoefficient(_selectedCategory)} мг Phe на 1г белка',
                   helperStyle: TextStyle(
                     color: Colors.blue.shade700,
                     fontWeight: FontWeight.w500,
@@ -410,7 +437,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               // Portion
               TextFormField(
                 controller: _portionController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -445,7 +473,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                   const Spacer(),
                   if (_isEditing)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade100,
                         borderRadius: BorderRadius.circular(12),
@@ -453,7 +482,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.edit, size: 14, color: Colors.orange.shade900),
+                          Icon(Icons.edit,
+                              size: 14, color: Colors.orange.shade900),
                           const SizedBox(width: 4),
                           Text(
                             'Редактирование',
@@ -474,7 +504,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               TextFormField(
                 controller: _proteinController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -504,7 +535,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               TextFormField(
                 controller: _pheController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -519,7 +551,9 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                       ? 'Рассчитано автоматически (белок × ${_getPheCoefficient(_selectedCategory)})'
                       : 'Введено вручную',
                   helperStyle: TextStyle(
-                    color: _isPheCalculated ? Colors.orange.shade700 : Colors.green.shade700,
+                    color: _isPheCalculated
+                        ? Colors.orange.shade700
+                        : Colors.green.shade700,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -546,7 +580,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               TextFormField(
                 controller: _fatController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -563,7 +598,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               TextFormField(
                 controller: _carbsController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -580,7 +616,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
               TextFormField(
                 controller: _caloriesController,
                 enabled: _isEditing,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -615,7 +652,9 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
                       )
                     : const Icon(Icons.add_circle),
                 label: Text(
-                  isNewProduct ? 'Добавить в дневник и сохранить' : 'Добавить в дневник',
+                  isNewProduct
+                      ? 'Добавить в дневник и сохранить'
+                      : 'Добавить в дневник',
                   style: const TextStyle(fontSize: 16),
                 ),
                 style: FilledButton.styleFrom(
@@ -751,7 +790,7 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -800,7 +839,8 @@ class _ScannedProductScreenState extends State<ScannedProductScreen> {
             const SizedBox(height: 8),
             _CalculatedRow(
               label: 'Калории',
-              value: (double.tryParse(_caloriesController.text) ?? 0) * multiplier,
+              value:
+                  (double.tryParse(_caloriesController.text) ?? 0) * multiplier,
               unit: 'ккал',
               color: Colors.red,
             ),
@@ -869,7 +909,8 @@ class _CalculatedRow extends StatelessWidget {
               Text(label, style: const TextStyle(fontSize: 13)),
               if (hasWarning) ...[
                 const SizedBox(width: 4),
-                Icon(Icons.warning_amber, size: 14, color: Colors.orange.shade700),
+                Icon(Icons.warning_amber,
+                    size: 14, color: Colors.orange.shade700),
               ],
             ],
           ),

@@ -83,9 +83,11 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
         barcode: widget.barcode,
       );
 
-      final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
+      final productsProvider =
+          Provider.of<ProductsProvider>(context, listen: false);
       await productsProvider.saveProductWithBarcode(product);
 
+      if (!mounted) return;
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
       await diaryProvider.addCustomEntry(
         productName: product.name,
@@ -140,7 +142,8 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.orange.shade900),
+                          Icon(Icons.info_outline,
+                              color: Colors.orange.shade900),
                           const SizedBox(width: 8),
                           Text(
                             'Продукт не найден в базах',
@@ -185,7 +188,6 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               TextFormField(
                 controller: _nameController,
                 textCapitalization: TextCapitalization.sentences,
@@ -202,10 +204,10 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _portionController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -227,7 +229,6 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                 },
               ),
               const SizedBox(height: 24),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -240,7 +241,8 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.lightbulb, size: 20, color: Colors.blue.shade900),
+                        Icon(Icons.lightbulb,
+                            size: 20, color: Colors.blue.shade900),
                         const SizedBox(width: 8),
                         Text(
                           'Найдите на упаковке (на 100г)',
@@ -255,9 +257,11 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _proteinController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                       decoration: const InputDecoration(
                         labelText: 'Белок (обязательно) *',
@@ -284,9 +288,11 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _pheController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Фенилаланин (Phe) *',
@@ -316,7 +322,6 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
               FilledButton.icon(
                 onPressed: _isLoading ? null : _handleSubmit,
                 icon: _isLoading
@@ -338,14 +343,14 @@ class _QuickAddProductScreenState extends State<QuickAddProductScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
               Card(
                 color: Colors.green.shade50,
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle, size: 20, color: Colors.green.shade900),
+                      Icon(Icons.check_circle,
+                          size: 20, color: Colors.green.shade900),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

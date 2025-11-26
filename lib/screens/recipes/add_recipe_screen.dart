@@ -84,9 +84,11 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                           labelText: 'Количество *',
                           hintText: '100',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,1}')),
                         ],
                       ),
                     ),
@@ -97,13 +99,15 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         value: selectedUnit,
                         decoration: const InputDecoration(
                           labelText: 'Ед.',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         isExpanded: true,
                         items: ['г', 'мл', 'шт', 'ч.л.', 'ст.л.', 'стакан']
                             .map((unit) => DropdownMenuItem(
                                   value: unit,
-                                  child: Text(unit, overflow: TextOverflow.ellipsis),
+                                  child: Text(unit,
+                                      overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
                         onChanged: (value) {
@@ -230,7 +234,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                             top: 8,
                             right: 8,
                             child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white),
+                              icon:
+                                  const Icon(Icons.close, color: Colors.white),
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.black54,
                               ),
@@ -259,9 +264,11 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                               uiSettings: [
                                 AndroidUiSettings(
                                   toolbarTitle: 'Обрезать фото',
-                                  toolbarColor: Theme.of(context).colorScheme.primary,
+                                  toolbarColor:
+                                      Theme.of(context).colorScheme.primary,
                                   toolbarWidgetColor: Colors.white,
-                                  activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+                                  activeControlsWidgetColor:
+                                      Theme.of(context).colorScheme.primary,
                                   lockAspectRatio: false,
                                   hideBottomControls: true,
                                 ),
@@ -288,7 +295,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         }
                       },
                       icon: const Icon(Icons.add_photo_alternate),
-                      label: Text(stepImage == null ? 'Добавить фото' : 'Изменить фото'),
+                      label: Text(stepImage == null
+                          ? 'Добавить фото'
+                          : 'Изменить фото'),
                     ),
                   ],
                 ),
@@ -355,7 +364,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final recipesProvider = Provider.of<RecipesProvider>(context, listen: false);
+      final recipesProvider =
+          Provider.of<RecipesProvider>(context, listen: false);
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
@@ -365,10 +375,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       // Upload cover image if present
       String? coverImageUrl;
       if (_coverImage != null) {
-        final coverRef = FirebaseStorage.instance
-            .ref()
-            .child('recipes')
-            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
+        final coverRef = FirebaseStorage.instance.ref().child('recipes').child(
+            '${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
         await coverRef.putFile(_coverImage!);
         coverImageUrl = await coverRef.getDownloadURL();
       }
@@ -382,11 +390,12 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               .ref()
               .child('recipes')
               .child('steps')
-              .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
+              .child(
+                  '${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
           await stepImageRef.putFile(_stepImages[i]!);
           stepImageUrl = await stepImageRef.getDownloadURL();
         }
-        
+
         stepsWithImages.add(RecipeStep(
           instruction: _steps[i].instruction,
           imageUrl: stepImageUrl,
@@ -394,7 +403,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       }
 
       // Create backward-compatible instructions list
-      final instructionsList = stepsWithImages.map((s) => s.instruction).toList();
+      final instructionsList =
+          stepsWithImages.map((s) => s.instruction).toList();
 
       final recipe = Recipe(
         id: '',
@@ -504,7 +514,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                         child: Text(
                           'Ваш рецепт будет проверен модераторами и опубликован после одобрения',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
                             fontSize: 13,
                           ),
                         ),
@@ -583,7 +595,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                               top: 8,
                               right: 8,
                               child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white),
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.black54,
                                 ),
@@ -691,7 +704,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   suffixText: 'мг/100г',
                   helperText: 'Обязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -711,7 +725,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Обязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -731,7 +746,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -745,7 +761,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -759,7 +776,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                   suffixText: 'ккал/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -884,9 +902,11 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                       subtitle: hasImage
                           ? const Row(
                               children: [
-                                Icon(Icons.image, size: 14, color: Colors.green),
+                                Icon(Icons.image,
+                                    size: 14, color: Colors.green),
                                 SizedBox(width: 4),
-                                Text('Фото добавлено', style: TextStyle(fontSize: 12)),
+                                Text('Фото добавлено',
+                                    style: TextStyle(fontSize: 12)),
                               ],
                             )
                           : null,

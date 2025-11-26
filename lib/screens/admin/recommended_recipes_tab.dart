@@ -365,7 +365,7 @@ class _RecipeCard extends StatelessWidget {
       child: Icon(
         Icons.restaurant_menu,
         size: 64,
-        color: Colors.white.withOpacity(0.8),
+        color: Colors.white.withValues(alpha: 0.8),
       ),
     );
   }
@@ -387,7 +387,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

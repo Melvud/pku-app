@@ -27,11 +27,9 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
-      // Загружаем только если продукты ещё не загружены
-      if (productsProvider.products.isEmpty) {
-        productsProvider.loadProducts();
-      }
+      final productsProvider =
+          Provider.of<ProductsProvider>(context, listen: false);
+      productsProvider.loadProducts();
     });
   }
 
@@ -55,99 +53,65 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Добавить в ${widget.mealType.displayName}'),
-      ),
-      body: Consumer<ProductsProvider>(
-        builder: (context, productsProvider, child) {
-          // Показываем прогресс синхронизации
-          if (productsProvider.isSyncing) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: productsProvider.syncProgress,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      productsProvider.syncStatus,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${(productsProvider.syncProgress * 100).toInt()}%',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
+    return Consumer<ProductsProvider>(
+      builder: (context, productsProvider, child) {
+        return Scaffold(
+          backgroundColor: Colors.grey[50], // Light background for modern feel
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Добавить в ${widget.mealType.displayName}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-              ),
-            );
-          }
-
-          // Показываем загрузку для начальной загрузки
-          if (productsProvider.isLoading && productsProvider.products.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Загрузка продуктов...'),
-                ],
-              ),
-            );
-          }
-
-          if (productsProvider.error != null && productsProvider.products.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
+                if (productsProvider.lastSync != null)
                   Text(
-                    productsProvider.error!,
-                    textAlign: TextAlign.center,
+                    'Обновлено: ${_formatDate(productsProvider.lastSync!)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => productsProvider.loadProducts(forceSync: true),
-                    child: const Text('Повторить'),
+              ],
+            ),
+            actions: [
+              if (productsProvider.isSyncing)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                ],
-              ),
-            );
-          }
-
-          List<Product> filteredProducts = productsProvider.products;
-
-          if (_searchQuery.isNotEmpty) {
-            filteredProducts = productsProvider.searchProducts(_searchQuery);
-          }
-
-          if (_selectedCategory != 'all') {
-            filteredProducts = filteredProducts
-                .where((p) => p.category == _selectedCategory)
-                .toList();
-          }
-
-          return Column(
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => productsProvider.syncFromGoogleSheets(),
+                  tooltip: 'Обновить базу',
+                ),
+            ],
+          ),
+          body: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+              // Search Bar
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Поиск продуктов...',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear),
@@ -157,6 +121,13 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                             },
                           )
                         : null,
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                   onChanged: (value) {
                     setState(() => _searchQuery = value);
@@ -164,7 +135,9 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                 ),
               ),
 
-              SizedBox(
+              // Categories
+              Container(
+                color: Colors.white,
                 height: 50,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
@@ -178,7 +151,8 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                     _CategoryChip(
                       label: 'Овощи',
                       isSelected: _selectedCategory == 'vegetables',
-                      onTap: () => setState(() => _selectedCategory = 'vegetables'),
+                      onTap: () =>
+                          setState(() => _selectedCategory = 'vegetables'),
                     ),
                     _CategoryChip(
                       label: 'Фрукты',
@@ -191,6 +165,28 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                       onTap: () => setState(() => _selectedCategory = 'grains'),
                     ),
                     _CategoryChip(
+                      label: 'Молочные',
+                      isSelected: _selectedCategory == 'dairy',
+                      onTap: () => setState(() => _selectedCategory = 'dairy'),
+                    ),
+                    _CategoryChip(
+                      label: 'Белковые',
+                      isSelected: _selectedCategory == 'protein',
+                      onTap: () =>
+                          setState(() => _selectedCategory = 'protein'),
+                    ),
+                    _CategoryChip(
+                      label: 'Снеки',
+                      isSelected: _selectedCategory == 'snacks',
+                      onTap: () => setState(() => _selectedCategory = 'snacks'),
+                    ),
+                    _CategoryChip(
+                      label: 'Напитки',
+                      isSelected: _selectedCategory == 'beverages',
+                      onTap: () =>
+                          setState(() => _selectedCategory = 'beverages'),
+                    ),
+                    _CategoryChip(
                       label: 'Другое',
                       isSelected: _selectedCategory == 'other',
                       onTap: () => setState(() => _selectedCategory = 'other'),
@@ -199,88 +195,91 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                 ),
               ),
 
-              const Divider(height: 1),
+              // Status Bar (Syncing)
+              if (productsProvider.isSyncing)
+                LinearProgressIndicator(
+                    value: productsProvider.syncProgress,
+                    backgroundColor: Colors.transparent),
 
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Text(
-                      'Найдено: ${filteredProducts.length}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const Spacer(),
-                    if (productsProvider.lastSync != null)
-                      Text(
-                        'Обновлено: ${_formatDate(productsProvider.lastSync!)}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 20),
-                      onPressed: () => productsProvider.syncFromGoogleSheets(),
-                      tooltip: 'Синхронизировать',
-                    ),
-                  ],
-                ),
-              ),
-
+              // Product List
               Expanded(
-                child: filteredProducts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Продукты не найдены',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Попробуйте изменить фильтры',
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredProducts.length,
-                        itemBuilder: (context, index) {
-                          final product = filteredProducts[index];
-                          return ListTile(
-                            title: Text(product.name),
-                            subtitle: Text(
-                              'Phe: ${product.pheToUse.toStringAsFixed(1)} мг • '
-                              'Белок: ${product.proteinPer100g.toStringAsFixed(1)} г (на 100г)',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.add_circle),
-                              color: Theme.of(context).colorScheme.primary,
-                              onPressed: () => _navigateToEditProduct(product),
-                            ),
-                            onTap: () => _navigateToEditProduct(product),
-                          );
-                        },
-                      ),
+                child: _buildProductList(context, productsProvider),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProductList(BuildContext context, ProductsProvider provider) {
+    if (provider.isLoading && provider.products.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.error != null && provider.products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(provider.error!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => provider.loadProducts(forceSync: true),
+              child: const Text('Повторить'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    List<Product> filteredProducts = provider.products;
+
+    if (_searchQuery.isNotEmpty) {
+      filteredProducts = provider.searchProducts(_searchQuery);
+    }
+
+    if (_selectedCategory != 'all') {
+      filteredProducts = filteredProducts
+          .where((p) => p.category == _selectedCategory)
+          .toList();
+    }
+
+    if (filteredProducts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'Продукты не найдены',
+              style: TextStyle(color: Colors.grey[500], fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredProducts.length,
+      itemBuilder: (context, index) {
+        final product = filteredProducts[index];
+        return _ProductListItem(
+          product: product,
+          onTap: () => _navigateToEditProduct(product),
+        );
+      },
     );
   }
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    
+
     if (diff.inMinutes < 60) {
       return '${diff.inMinutes} мин назад';
     } else if (diff.inHours < 24) {
@@ -305,11 +304,193 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
+      padding: const EdgeInsets.only(right: 8, bottom: 8),
+      child: ActionChip(
         label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => onTap(),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : Colors.black87,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        backgroundColor:
+            isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isSelected ? Colors.transparent : Colors.grey[300]!,
+              width: 1,
+            )),
+        onPressed: onTap,
+      ),
+    );
+  }
+}
+
+class _ProductListItem extends StatelessWidget {
+  final Product product;
+  final VoidCallback onTap;
+
+  const _ProductListItem({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(product.category).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _getCategoryIcon(product.category),
+                    color: _getCategoryColor(product.category),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _NutrientBadge(
+                            label: 'Phe',
+                            value: '${product.pheToUse.toStringAsFixed(1)} мг',
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(width: 8),
+                          _NutrientBadge(
+                            label: 'Белок',
+                            value:
+                                '${product.proteinPer100g.toStringAsFixed(1)} г',
+                            color: Colors.blue,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.add_circle_outline, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'vegetables':
+        return Colors.green;
+      case 'fruits':
+        return Colors.red;
+      case 'grains':
+        return Colors.amber;
+      case 'dairy':
+        return Colors.blue;
+      case 'protein':
+        return Colors.deepOrange;
+      case 'snacks':
+        return Colors.purple;
+      case 'beverages':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'vegetables':
+        return Icons.eco;
+      case 'fruits':
+        return Icons.apple;
+      case 'grains':
+        return Icons.breakfast_dining;
+      case 'dairy':
+        return Icons.local_drink; // Milk icon usually
+      case 'protein':
+        return Icons.restaurant;
+      case 'snacks':
+        return Icons.cookie;
+      case 'beverages':
+        return Icons.local_cafe;
+      default:
+        return Icons.fastfood;
+    }
+  }
+}
+
+class _NutrientBadge extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _NutrientBadge({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color.withOpacity(0.8),
+            ),
+          ),
+        ],
       ),
     );
   }

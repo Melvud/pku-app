@@ -1,19 +1,17 @@
-// lib/providers/products_provider.dart (обновленная версия)
+// lib/providers/products_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/product.dart';
 import '../services/google_sheets_service.dart';
 import '../services/multi_source_barcode_service.dart';
 import '../services/local_database_service.dart';
-import '../services/usda_sync_service.dart';
 
 class ProductsProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSheetsService _sheetsService = GoogleSheetsService();
   final MultiSourceBarcodeService _barcodeService = MultiSourceBarcodeService();
-  final USDASyncService _usdaSyncService = USDASyncService();
 
   List<Product> _products = [];
   bool _isLoading = false;
@@ -32,10 +30,10 @@ class ProductsProvider with ChangeNotifier {
   String get syncStatus => _syncStatus;
 
   ProductsProvider() {
-    _loadLastSyncTime();
+    _loadSettings();
   }
 
-  Future<void> _loadLastSyncTime() async {
+  Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final timestamp = prefs.getInt('last_sync_timestamp');
@@ -43,22 +41,24 @@ class ProductsProvider with ChangeNotifier {
         _lastSync = DateTime.fromMillisecondsSinceEpoch(timestamp);
       }
     } catch (e) {
-      debugPrint('Error loading last sync time: $e');
+      debugPrint('Error loading settings: $e');
     }
   }
 
-  Future<void> _saveLastSyncTime() async {
+  Future<void> _saveSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('last_sync_timestamp', _lastSync!.millisecondsSinceEpoch);
+      if (_lastSync != null) {
+        await prefs.setInt(
+            'last_sync_timestamp', _lastSync!.millisecondsSinceEpoch);
+      }
     } catch (e) {
-      debugPrint('Error saving last sync time: $e');
+      debugPrint('Error saving settings: $e');
     }
   }
 
   Future<ProductSearchResult> findProductByBarcode(String barcode) async {
     try {
-      // 1. Ищем в локальной базе Firestore по barcode
       final snapshot = await _firestore
           .collection('products')
           .where('barcode', isEqualTo: barcode)
@@ -66,7 +66,6 @@ class ProductsProvider with ChangeNotifier {
           .get();
 
       if (snapshot.docs.isNotEmpty) {
-        debugPrint('✅ Product found in local database by barcode');
         return ProductSearchResult(
           product: Product.fromFirestore(snapshot.docs.first),
           source: 'Локальная база',
@@ -74,36 +73,9 @@ class ProductsProvider with ChangeNotifier {
         );
       }
 
-      // 2. Ищем во внешних источниках
-      debugPrint('🔍 Searching in external sources...');
       final result = await _barcodeService.searchProductByBarcode(barcode);
-      
-      if (result.product.name.isNotEmpty) {
-        // Проверяем есть ли похожий продукт в нашей базе
-        final existingProduct = await _findSimilarProductByName(result.product.name);
-        
-        if (existingProduct != null) {
-          debugPrint('📝 Found similar product in database, updating barcode...');
-          
-          final updatedProduct = existingProduct.copyWith(barcode: barcode);
-          await _firestore
-              .collection('products')
-              .doc(existingProduct.id)
-              .update({'barcode': barcode});
-          
-          await loadProducts();
-          
-          return ProductSearchResult(
-            product: updatedProduct,
-            source: 'Локальная база',
-            hasNutritionData: true,
-          );
-        }
-      }
-      
       return result;
     } catch (e) {
-      debugPrint('Error finding product by barcode: $e');
       return ProductSearchResult(
         product: Product(
           id: '',
@@ -127,186 +99,142 @@ class ProductsProvider with ChangeNotifier {
     }
   }
 
-  Future<Product?> _findSimilarProductByName(String name) async {
-    try {
-      final normalizedName = _normalizeName(name);
-      
-      final exactMatch = _products.where((p) {
-        return _normalizeName(p.name) == normalizedName;
-      }).toList();
-      
-      if (exactMatch.isNotEmpty) {
-        return exactMatch.first;
-      }
-      
-      final words = normalizedName.split(' ').where((w) => w.length > 3).toList();
-      if (words.isEmpty) return null;
-      
-      final similarMatches = _products.where((p) {
-        final productWords = _normalizeName(p.name).split(' ');
-        int matchCount = 0;
-        for (var word in words) {
-          if (productWords.any((pw) => pw.contains(word) || word.contains(pw))) {
-            matchCount++;
-          }
-        }
-        return matchCount >= (words.length * 0.7);
-      }).toList();
-      
-      return similarMatches.isNotEmpty ? similarMatches.first : null;
-    } catch (e) {
-      debugPrint('Error finding similar product: $e');
-      return null;
-    }
-  }
-
-  String _normalizeName(String name) {
-    return name.toLowerCase()
-        .replaceAll(RegExp(r'[^\wа-яё\s]', unicode: true), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  Future<void> saveProductWithBarcode(Product product) async {
-    try {
-      if (product.barcode != null) {
-        final existing = await _firestore
-            .collection('products')
-            .where('barcode', isEqualTo: product.barcode)
-            .limit(1)
-            .get();
-        
-        if (existing.docs.isNotEmpty) {
-          await _firestore
-              .collection('products')
-              .doc(existing.docs.first.id)
-              .update(product.toFirestore());
-          debugPrint('✅ Updated existing product with barcode: ${product.barcode}');
-        } else {
-          await _firestore.collection('products').add(product.toFirestore());
-          debugPrint('✅ Created new product with barcode: ${product.barcode}');
-        }
-      } else {
-        await _firestore.collection('products').add(product.toFirestore());
-        debugPrint('✅ Created new product without barcode');
-      }
-      
-      await loadProducts();
-    } catch (e) {
-      debugPrint('Error saving product: $e');
-      rethrow;
-    }
-  }
-
   Future<void> loadProducts({bool forceSync = false}) async {
     if (_isLoading || _isSyncing) return;
 
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      // Step 1: Проверяем нужна ли синхронизация ДО загрузки данных из кэша
       final localDb = LocalDatabaseService();
-      final shouldSync = _products.isEmpty || _shouldSync() || forceSync;
+
+      // 1. Load from local cache first (fastest)
       final hasLocalCache = await localDb.hasCache('products');
 
-      // Step 2: Если нужна синхронизация - запускаем её сразу
-      if (shouldSync) {
-        await syncFromGoogleSheets();
-        return;
-      }
-
-      // Step 3: Если синхронизация не нужна - загружаем из кэша
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      if (hasLocalCache) {
-        final cachedProducts = await localDb.getCachedProducts();
+      if (hasLocalCache && !forceSync) {
+        final cachedProducts =
+            await localDb.getCachedProducts(source: 'Google Sheets');
         if (cachedProducts.isNotEmpty) {
-          _products = cachedProducts.map((map) => _productFromMap(map)).toList();
+          _products =
+              cachedProducts.map((map) => _productFromMap(map)).toList();
           debugPrint('✅ Loaded ${_products.length} products from local cache');
           _isLoading = false;
           notifyListeners();
 
-          // Проверяем обновления в фоне
+          // Check for updates in background
           _checkForUpdatesInBackground();
           return;
         }
       }
 
-      // Step 4: Если локального кэша нет - пробуем Firestore cache
-      final snapshot = await _firestore
-          .collection('products')
-          .orderBy('name')
-          .get(const GetOptions(source: Source.cache));
-
-      if (snapshot.docs.isNotEmpty) {
-        _products = snapshot.docs
-            .map((doc) => Product.fromFirestore(doc))
-            .toList();
-        debugPrint('✅ Loaded ${_products.length} products from Firestore cache');
-        _isLoading = false;
-        notifyListeners();
-
-        // Сохраняем в локальный кэш для следующего раза
-        await _saveCacheFromFirestore(snapshot.docs);
-        _checkForUpdatesInBackground();
-        return;
-      }
-
-      // Step 5: Если ничего нет - делаем полную синхронизацию
-      _isLoading = false;
-      notifyListeners();
+      // 2. If no cache or force sync, sync from sheets
       await syncFromGoogleSheets();
-
     } catch (e) {
       _error = 'Ошибка загрузки продуктов: $e';
       _isLoading = false;
       debugPrint(_error);
       notifyListeners();
-
-      // Fallback: пробуем загрузить с сервера
-      try {
-        final snapshot = await _firestore
-            .collection('products')
-            .orderBy('name')
-            .get();
-
-        _products = snapshot.docs
-            .map((doc) => Product.fromFirestore(doc))
-            .toList();
-        notifyListeners();
-      } catch (serverError) {
-        debugPrint('Server load error: $serverError');
-      }
     }
   }
 
-  Future<void> _saveCacheFromFirestore(List<DocumentSnapshot> docs) async {
+  Future<void> _checkForUpdatesInBackground() async {
     try {
-      final localDb = LocalDatabaseService();
-      final productsForCache = docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return {
-          'id': doc.id,
-          'name': data['name'],
-          'phePer100g': data['phePer100g'] ?? data['pheEstimatedPer100g'] ?? 0.0,
-          'proteinPer100g': data['proteinPer100g'] ?? 0.0,
-          'fatPer100g': data['fatPer100g'],
-          'carbsPer100g': data['carbsPer100g'],
-          'caloriesPer100g': data['caloriesPer100g'],
-          'category': data['category'] ?? 'other',
-          'source': data['source'],
-          'barcode': data['barcode'],
-          'googleSheetsId': data['googleSheetsId'],
-          'notes': data['notes'],
-          'createdBy': data['createdBy'],
-          'isUserCreated': data['isUserCreated'] ?? false,
-        };
-      }).toList();
-      await localDb.cacheProducts(productsForCache);
-      debugPrint('✅ Saved ${productsForCache.length} products to local cache');
+      debugPrint('Checking for updates in background...');
+      final lastModified = await _sheetsService.getLastModifiedTime();
+
+      if (lastModified != null && _lastSync != null) {
+        if (lastModified.isAfter(_lastSync!)) {
+          debugPrint(
+              'Updates available (Remote: $lastModified > Local: $_lastSync)');
+          await syncFromGoogleSheets();
+        } else {
+          debugPrint('No updates found. Local is up to date.');
+        }
+      } else {
+        if (_lastSync == null) {
+          await syncFromGoogleSheets();
+        }
+      }
     } catch (e) {
-      debugPrint('Error saving cache: $e');
+      debugPrint('Background update check failed: $e');
     }
+  }
+
+  Future<void> syncFromGoogleSheets() async {
+    if (_isSyncing) return;
+
+    _isSyncing = true;
+    _error = null;
+    _syncProgress = 0.0;
+    _syncStatus = 'Проверка обновлений...';
+    notifyListeners();
+
+    try {
+      _syncProgress = 0.2;
+      _syncStatus = 'Загрузка базы продуктов...';
+      notifyListeners();
+
+      final sheetProducts = await _sheetsService.fetchProducts();
+
+      if (sheetProducts.isEmpty) {
+        _error = 'База данных пуста';
+        _isSyncing = false;
+        notifyListeners();
+        return;
+      }
+
+      _syncProgress = 0.5;
+      _syncStatus = 'Сохранение ${sheetProducts.length} продуктов...';
+      notifyListeners();
+
+      // Save to local DB
+      final localDb = LocalDatabaseService();
+
+      final productsForCache =
+          sheetProducts.map((p) => _productToMap(p)).toList();
+      await localDb.cacheProducts(productsForCache);
+
+      _products = sheetProducts;
+      _lastSync = DateTime.now();
+      await _saveSettings();
+
+      _syncProgress = 1.0;
+      _syncStatus = 'Готово';
+      notifyListeners();
+
+      debugPrint('✅ Sync completed: ${sheetProducts.length} products loaded');
+    } catch (e) {
+      _error = 'Ошибка синхронизации: $e';
+      debugPrint(_error);
+    } finally {
+      _isSyncing = false;
+      _isLoading = false;
+      _syncProgress = 0.0;
+      _syncStatus = '';
+      notifyListeners();
+    }
+  }
+
+  Map<String, dynamic> _productToMap(Product product) {
+    return {
+      'id':
+          product.id.isEmpty ? product.googleSheetsId ?? 'unknown' : product.id,
+      'name': product.name,
+      'phePer100g': product.pheToUse,
+      'proteinPer100g': product.proteinPer100g,
+      'fatPer100g': product.fatPer100g,
+      'carbsPer100g': product.carbsPer100g,
+      'caloriesPer100g': product.caloriesPer100g,
+      'category': product.category,
+      'source': product.source,
+      'barcode': product.barcode,
+      'googleSheetsId': product.googleSheetsId,
+      'notes': product.notes,
+      'createdBy': null,
+      'isUserCreated': false,
+      'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+    };
   }
 
   Product _productFromMap(Map<String, dynamic> map) {
@@ -317,388 +245,71 @@ class ProductsProvider with ChangeNotifier {
       proteinPer100g: (map['proteinPer100g'] ?? 0).toDouble(),
       pheMeasuredPer100g: map['pheMeasuredPer100g']?.toDouble(),
       pheEstimatedPer100g: (map['phePer100g'] ?? 0).toDouble(),
-      fatPer100g: map['fatPer100g'] != null ? (map['fatPer100g'] as num).toDouble() : null,
-      carbsPer100g: map['carbsPer100g'] != null ? (map['carbsPer100g'] as num).toDouble() : null,
-      caloriesPer100g: map['caloriesPer100g'] != null ? (map['caloriesPer100g'] as num).toDouble() : null,
+      fatPer100g: map['fatPer100g'] != null
+          ? (map['fatPer100g'] as num).toDouble()
+          : null,
+      carbsPer100g: map['carbsPer100g'] != null
+          ? (map['carbsPer100g'] as num).toDouble()
+          : null,
+      caloriesPer100g: map['caloriesPer100g'] != null
+          ? (map['caloriesPer100g'] as num).toDouble()
+          : null,
       source: map['source'] ?? 'Google Sheets',
       notes: map['notes'],
       barcode: map['barcode'],
       googleSheetsId: map['googleSheetsId'],
-      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] ?? DateTime.now().millisecondsSinceEpoch),
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(
+          map['lastUpdated'] ?? DateTime.now().millisecondsSinceEpoch),
     );
   }
 
-  bool _shouldSync() {
-    if (_lastSync == null) return true;
-    final hoursSinceSync = DateTime.now().difference(_lastSync!).inHours;
-    return hoursSinceSync >= 24;
-  }
+  List<Product> searchProducts(String query) {
+    if (query.isEmpty) return _products;
 
-  Future<void> _checkForUpdatesInBackground() async {
-    try {
-      final hasUpdates = await _hasGoogleSheetsUpdates();
-      if (hasUpdates) {
-        debugPrint('Updates available, syncing...');
-        await syncFromGoogleSheets();
-      }
-    } catch (e) {
-      debugPrint('Background check error: $e');
-    }
-  }
-
-  Future<bool> _hasGoogleSheetsUpdates() async {
-    try {
-      final sheetProducts = await _sheetsService.fetchProducts();
-      
-      if (sheetProducts.length != _products.length) {
-        return true;
-      }
-
-      for (int i = 0; i < 10 && i < sheetProducts.length; i++) {
-        final sheetProduct = sheetProducts[i];
-        final localProduct = _products.firstWhere(
-          (p) => p.name == sheetProduct.name,
-          orElse: () => sheetProduct,
-        );
-        
-        if (localProduct.pheToUse != sheetProduct.pheToUse ||
-            localProduct.proteinPer100g != sheetProduct.proteinPer100g) {
-          return true;
-        }
-      }
-
-      return false;
-    } catch (e) {
-      debugPrint('Error checking updates: $e');
-      return false;
-    }
-  }
-
-  Future<void> syncFromGoogleSheets() async {
-    if (_isSyncing) return;
-
-    _isSyncing = true;
-    _error = null;
-    _syncProgress = 0.0;
-    _syncStatus = 'Подключение к Google Sheets...';
-    notifyListeners();
-
-    try {
-      _syncProgress = 0.2;
-      _syncStatus = 'Загрузка данных из таблицы...';
-      notifyListeners();
-
-      final sheetProducts = await _sheetsService.fetchProducts();
-
-      // Если в Google Sheets нет данных, загружаем из USDA в Google Sheets
-      if (sheetProducts.isEmpty) {
-        _syncProgress = 0.3;
-        _syncStatus = 'Google Sheets пуста, начинаем загрузку из USDA...';
-        notifyListeners();
-
-        try {
-          final usdaSyncService = USDASyncService();
-
-          _syncProgress = 0.4;
-          _syncStatus = 'Загрузка базы данных USDA (это может занять несколько минут)...';
-          notifyListeners();
-
-          // Загружаем всю базу USDA в Google Sheets
-          // Рекомендуется начать с 10000 продуктов для первоначального наполнения
-          final success = await usdaSyncService.syncToGoogleSheets(
-            maxProducts: 10000, // Можно увеличить до 50000+ если нужно больше
-            onProgress: (current, total, status) {
-              _syncProgress = 0.4 + (0.4 * (current / total));
-              _syncStatus = status;
-              notifyListeners();
-            },
-          );
-
-          if (!success) {
-            _error = 'Не удалось загрузить данные из USDA в Google Sheets';
-            _isSyncing = false;
-            notifyListeners();
-            return;
-          }
-
-          _syncProgress = 0.8;
-          _syncStatus = 'Данные загружены в Google Sheets, синхронизация с приложением...';
-          notifyListeners();
-
-          // Теперь загружаем данные из Google Sheets как обычно
-          // Продолжаем выполнение, чтобы загрузить данные из Sheets
-        } catch (e) {
-          _error = 'Ошибка загрузки из USDA: $e';
-          _isSyncing = false;
-          notifyListeners();
-          return;
-        }
-
-        // Перезагружаем данные из Google Sheets после успешной загрузки
-        final reloadedSheetProducts = await _sheetsService.fetchProducts();
-
-        if (reloadedSheetProducts.isEmpty) {
-          _error = 'Данные не появились в Google Sheets. Проверьте настройки Web App.';
-          _isSyncing = false;
-          notifyListeners();
-          return;
-        }
-
-        // Используем перезагруженные данные для дальнейшей обработки
-        await _processSyncedProducts(reloadedSheetProducts);
-        return;
-      }
-
-      await _processSyncedProducts(sheetProducts);
-    } catch (e) {
-      _error = 'Ошибка синхронизации: $e';
-      debugPrint(_error);
-    } finally {
-      _isSyncing = false;
-      _syncProgress = 0.0;
-      _syncStatus = '';
-      notifyListeners();
-    }
-  }
-
-  /// Обработка продуктов из Google Sheets и сохранение в Firestore
-  Future<void> _processSyncedProducts(List<Product> sheetProducts) async {
-    await _syncProductsToFirestore(sheetProducts);
-  }
-
-  Future<void> _syncProductsToFirestore(List<Product> sheetProducts) async {
-    _syncProgress = 0.6;
-    _syncStatus = 'Получено ${sheetProducts.length} продуктов';
-    notifyListeners();
-
-    final existingSnapshot = await _firestore.collection('products').get();
-    final existingProducts = <String, String>{};
-    final existingBarcodes = <String, String>{};
-
-    for (var doc in existingSnapshot.docs) {
-      final data = doc.data();
-      if (data['googleSheetsId'] != null) {
-        existingProducts[data['googleSheetsId'] as String] = doc.id;
-      }
-      if (data['barcode'] != null) {
-        existingBarcodes[data['barcode'] as String] = doc.id;
-      }
-    }
-
-    _syncProgress = 0.7;
-    _syncStatus = 'Обновление базы данных...';
-    notifyListeners();
-
-    var batch = _firestore.batch();
-    int addedCount = 0;
-    int updatedCount = 0;
-    int batchOperationCount = 0;
-
-    for (int i = 0; i < sheetProducts.length; i++) {
-      final product = sheetProducts[i];
-
-      if (i % 20 == 0) {
-        _syncProgress = 0.7 + (0.2 * (i / sheetProducts.length));
-        _syncStatus = 'Обработано ${i + 1} из ${sheetProducts.length}';
-        notifyListeners();
-      }
-
-      String? docId;
-      if (product.googleSheetsId != null &&
-          existingProducts.containsKey(product.googleSheetsId)) {
-        docId = existingProducts[product.googleSheetsId];
-        updatedCount++;
-      } else if (product.barcode != null &&
-                 existingBarcodes.containsKey(product.barcode)) {
-        docId = existingBarcodes[product.barcode];
-        updatedCount++;
-      } else {
-        addedCount++;
-      }
-
-      if (docId != null) {
-        batch.update(
-          _firestore.collection('products').doc(docId),
-          product.toFirestore(),
-        );
-      } else {
-        batch.set(
-          _firestore.collection('products').doc(),
-          product.toFirestore(),
-        );
-      }
-      batchOperationCount++;
-
-      // Firestore batch limit is 500 operations
-      if (batchOperationCount >= 500) {
-        await batch.commit();
-        debugPrint('✅ Committed batch at ${i + 1} products');
-        // Create a new batch for the next set of operations
-        batch = _firestore.batch();
-        batchOperationCount = 0;
-      }
-    }
-
-    // Commit any remaining operations
-    if (batchOperationCount > 0) {
-      await batch.commit();
-      debugPrint('✅ Committed final batch');
-    }
-
-    _syncProgress = 0.9;
-    _syncStatus = 'Обновление локального кэша...';
-    notifyListeners();
-
-    // Load products directly from Firestore instead of calling loadProducts()
-    // (which would return early due to _isSyncing being true)
-    try {
-      final snapshot = await _firestore
-          .collection('products')
-          .orderBy('name')
-          .get();
-
-      _products = snapshot.docs
-          .map((doc) => Product.fromFirestore(doc))
-          .toList();
-      debugPrint('✅ Loaded ${_products.length} products after sync');
-
-      // Save to local cache
-      await _saveCacheFromFirestore(snapshot.docs);
-    } catch (e) {
-      debugPrint('Error loading products after sync: $e');
-    }
-
-    _lastSync = DateTime.now();
-    await _saveLastSyncTime();
-
-    _syncProgress = 1.0;
-    _syncStatus = 'Синхронизация завершена: +$addedCount новых, ~$updatedCount обновлено';
-    notifyListeners();
-
-    debugPrint('✅ Sync completed: $addedCount added, $updatedCount updated');
-  }
-
-  Future<void> addProduct(Product product) async {
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Add user-specific metadata
-      final productData = product.toFirestore();
-      productData['createdBy'] = currentUser.uid;
-      productData['isUserCreated'] = true;
-      productData['createdAt'] = FieldValue.serverTimestamp();
-
-      // Save to Firebase
-      final docRef = await _firestore.collection('products').add(productData);
-
-      // Save to local cache immediately
-      final localDb = LocalDatabaseService();
-      final productForCache = {
-        'id': docRef.id,
-        'name': product.name,
-        'phePer100g': product.pheToUse,
-        'proteinPer100g': product.proteinPer100g,
-        'fatPer100g': product.fatPer100g,
-        'carbsPer100g': product.carbsPer100g,
-        'caloriesPer100g': product.caloriesPer100g,
-        'category': product.category,
-        'source': product.source,
-        'barcode': product.barcode,
-        'googleSheetsId': product.googleSheetsId,
-        'notes': product.notes,
-        'createdBy': currentUser.uid,
-        'isUserCreated': true,
-      };
-
-      await localDb.cacheProducts([productForCache]);
-
-      // Add to local products list
-      final newProduct = product.copyWith(id: docRef.id);
-      _products.add(newProduct);
-      _products.sort((a, b) => a.name.compareTo(b.name));
-
-      notifyListeners();
-      debugPrint('✅ User product added and saved locally: ${product.name}');
-    } catch (e) {
-      _error = 'Ошибка добавления продукта: $e';
-      debugPrint(_error);
-      rethrow;
-    }
+    final lowerQuery = query.toLowerCase();
+    return _products.where((product) {
+      return product.name.toLowerCase().contains(lowerQuery) ||
+          product.category.toLowerCase().contains(lowerQuery);
+    }).toList();
   }
 
   Future<void> updateProduct(Product product) async {
     try {
-      await _firestore
-          .collection('products')
-          .doc(product.id)
-          .update(product.toFirestore());
+      if (product.id.isNotEmpty) {
+        await _firestore
+            .collection('products')
+            .doc(product.id)
+            .update(product.toFirestore());
+      }
 
-      // Update in local cache
-      final localDb = LocalDatabaseService();
-      final productForCache = {
-        'id': product.id,
-        'name': product.name,
-        'phePer100g': product.pheToUse,
-        'proteinPer100g': product.proteinPer100g,
-        'fatPer100g': product.fatPer100g,
-        'carbsPer100g': product.carbsPer100g,
-        'caloriesPer100g': product.caloriesPer100g,
-        'category': product.category,
-        'source': product.source,
-        'barcode': product.barcode,
-        'googleSheetsId': product.googleSheetsId,
-        'notes': product.notes,
-        'createdBy': null,
-        'isUserCreated': false,
-      };
-      await localDb.cacheProducts([productForCache]);
-
-      // Update in local list
       final index = _products.indexWhere((p) => p.id == product.id);
       if (index != -1) {
         _products[index] = product;
         notifyListeners();
       }
 
-      debugPrint('✅ Product updated: ${product.name}');
+      final localDb = LocalDatabaseService();
+      await localDb.cacheProducts([_productToMap(product)]);
     } catch (e) {
-      _error = 'Ошибка обновления продукта: $e';
-      debugPrint(_error);
+      debugPrint('Error updating product: $e');
       rethrow;
     }
   }
 
-  Future<void> deleteProduct(String productId) async {
+  Future<void> saveProductWithBarcode(Product product) async {
     try {
-      await _firestore.collection('products').doc(productId).delete();
-      await loadProducts();
+      final docRef =
+          await _firestore.collection('products').add(product.toFirestore());
+      final newProduct = product.copyWith(id: docRef.id);
+
+      _products.add(newProduct);
+      notifyListeners();
+
+      final localDb = LocalDatabaseService();
+      await localDb.cacheProducts([_productToMap(newProduct)]);
     } catch (e) {
-      _error = 'Ошибка удаления продукта: $e';
-      debugPrint(_error);
+      debugPrint('Error saving product: $e');
       rethrow;
-    }
-  }
-
-  List<Product> searchProducts(String query) {
-    if (query.isEmpty) return _products;
-    
-    final lowerQuery = query.toLowerCase();
-    return _products.where((product) {
-      return product.name.toLowerCase().contains(lowerQuery) ||
-             product.category.toLowerCase().contains(lowerQuery);
-    }).toList();
-  }
-
-  Product? findProductByName(String name) {
-    try {
-      return _products.firstWhere(
-        (p) => p.name.toLowerCase() == name.toLowerCase(),
-      );
-    } catch (e) {
-      return null;
     }
   }
 

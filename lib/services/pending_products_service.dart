@@ -32,7 +32,8 @@ class PendingProductsService {
           .orderBy('createdAt', descending: true)
           .get();
 
-      debugPrint('✅ Loaded ${snapshot.docs.length} pending products with index');
+      debugPrint(
+          '✅ Loaded ${snapshot.docs.length} pending products with index');
       return snapshot.docs
           .map((doc) => PendingProduct.fromFirestore(doc))
           .toList();
@@ -82,7 +83,8 @@ class PendingProductsService {
   }
 
   /// Approve a pending product and add it to the main products collection
-  Future<void> approveProduct(String pendingProductId, {String? adminNotes}) async {
+  Future<void> approveProduct(String pendingProductId,
+      {String? adminNotes}) async {
     try {
       // Get the pending product
       final doc = await _firestore
@@ -121,7 +123,10 @@ class PendingProductsService {
       }
 
       // Update pending product status
-      await _firestore.collection('pending_products').doc(pendingProductId).update({
+      await _firestore
+          .collection('pending_products')
+          .doc(pendingProductId)
+          .update({
         'status': PendingProductStatus.approved.name,
         'reviewedAt': FieldValue.serverTimestamp(),
         'adminNotes': adminNotes,
@@ -135,9 +140,13 @@ class PendingProductsService {
   }
 
   /// Reject a pending product
-  Future<void> rejectProduct(String pendingProductId, String reason, {String? adminNotes}) async {
+  Future<void> rejectProduct(String pendingProductId, String reason,
+      {String? adminNotes}) async {
     try {
-      await _firestore.collection('pending_products').doc(pendingProductId).update({
+      await _firestore
+          .collection('pending_products')
+          .doc(pendingProductId)
+          .update({
         'status': PendingProductStatus.rejected.name,
         'rejectionReason': reason,
         'reviewedAt': FieldValue.serverTimestamp(),
@@ -169,7 +178,10 @@ class PendingProductsService {
   /// Delete a pending product
   Future<void> deletePendingProduct(String pendingProductId) async {
     try {
-      await _firestore.collection('pending_products').doc(pendingProductId).delete();
+      await _firestore
+          .collection('pending_products')
+          .doc(pendingProductId)
+          .delete();
       debugPrint('✅ Pending product deleted: $pendingProductId');
     } catch (e) {
       debugPrint('❌ Error deleting pending product: $e');

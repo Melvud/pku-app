@@ -1,12 +1,14 @@
 // lib/services/fatsecret_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
 class FatSecretService {
   static const String _clientId = 'e79230eb6fdb4417bab04f9530151e12';
   static const String _clientSecret = '102da768ee124338b77f4cb38cee8010';
-  static const String _baseUrl = 'https://platform.fatsecret.com/rest/server.api';
+  static const String _baseUrl =
+      'https://platform.fatsecret.com/rest/server.api';
 
   String? _accessToken;
   DateTime? _tokenExpiry;
@@ -19,7 +21,8 @@ class FatSecretService {
     }
 
     try {
-      final credentials = base64Encode(utf8.encode('$_clientId:$_clientSecret'));
+      final credentials =
+          base64Encode(utf8.encode('$_clientId:$_clientSecret'));
 
       final response = await http.post(
         Uri.parse('https://oauth.fatsecret.com/connect/token'),
@@ -39,13 +42,14 @@ class FatSecretService {
         final expiresIn = data['expires_in'] as int;
         _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn));
 
-        print('✅ FatSecret access token obtained');
+        debugPrint('✅ FatSecret access token obtained');
         return _accessToken!;
       } else {
-        throw Exception('Failed to get FatSecret access token: ${response.statusCode}');
+        throw Exception(
+            'Failed to get FatSecret access token: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error getting FatSecret token: $e');
+      debugPrint('❌ Error getting FatSecret token: $e');
       rethrow;
     }
   }
@@ -54,7 +58,7 @@ class FatSecretService {
     try {
       final token = await _getAccessToken();
 
-      print('🔍 Searching in FatSecret for barcode: $barcode');
+      debugPrint('🔍 Searching in FatSecret for barcode: $barcode');
 
       final response = await http.post(
         Uri.parse(_baseUrl),
@@ -76,15 +80,15 @@ class FatSecretService {
           final foodId = data['food_id']['value'] as String;
           return await _getProductById(foodId, barcode);
         } else {
-          print('❌ Product not found in FatSecret');
+          debugPrint('❌ Product not found in FatSecret');
           return null;
         }
       } else {
-        print('❌ FatSecret API error: ${response.statusCode}');
+        debugPrint('❌ FatSecret API error: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('❌ Error fetching from FatSecret: $e');
+      debugPrint('❌ Error fetching from FatSecret: $e');
       return null;
     }
   }
@@ -108,19 +112,20 @@ class FatSecretService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        print('✅ Product found in FatSecret');
+        debugPrint('✅ Product found in FatSecret');
         return Product.fromFatSecret(data, barcode);
       } else {
-        print('❌ Failed to get product details from FatSecret');
+        debugPrint('❌ Failed to get product details from FatSecret');
         return null;
       }
     } catch (e) {
-      print('❌ Error getting product details: $e');
+      debugPrint('❌ Error getting product details: $e');
       return null;
     }
   }
 
-  Future<List<Product>> searchProducts(String query, {int maxResults = 20}) async {
+  Future<List<Product>> searchProducts(String query,
+      {int maxResults = 20}) async {
     try {
       final token = await _getAccessToken();
 
@@ -152,7 +157,7 @@ class FatSecretService {
 
       return [];
     } catch (e) {
-      print('Error searching FatSecret: $e');
+      debugPrint('Error searching FatSecret: $e');
       return [];
     }
   }

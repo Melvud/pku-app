@@ -1,5 +1,6 @@
 // lib/services/barcode_sheets_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
@@ -7,7 +8,8 @@ import '../models/product.dart';
 /// Sheet: gid=1127717778 - Barcode database
 /// Sheet: gid=288786302 - General products database
 class BarcodeSheetsService {
-  static const String _spreadsheetId = '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
+  static const String _spreadsheetId =
+      '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
   static const String _apiKey = 'AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg';
 
   // Sheet IDs
@@ -20,11 +22,11 @@ class BarcodeSheetsService {
       // First get sheet name by gid
       final sheetName = await _getSheetNameByGid(_barcodeSheetGid);
       if (sheetName == null) {
-        print('❌ Could not find barcode sheet');
+        debugPrint('❌ Could not find barcode sheet');
         return [];
       }
 
-      print('📊 Loading barcode products from sheet: $sheetName');
+      debugPrint('📊 Loading barcode products from sheet: $sheetName');
 
       final url = Uri.parse(
         'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId/values/${Uri.encodeComponent(sheetName)}!A2:L?key=$_apiKey',
@@ -37,11 +39,11 @@ class BarcodeSheetsService {
         final values = data['values'] as List<dynamic>?;
 
         if (values == null || values.isEmpty) {
-          print('⚠️ No data found in barcode sheet');
+          debugPrint('⚠️ No data found in barcode sheet');
           return [];
         }
 
-        print('✅ Found ${values.length} barcode products');
+        debugPrint('✅ Found ${values.length} barcode products');
 
         return values
             .asMap()
@@ -50,13 +52,16 @@ class BarcodeSheetsService {
                   entry.value as List<dynamic>,
                   entry.key,
                 ))
-            .where((product) => product.name.isNotEmpty && product.barcode != null && product.barcode!.isNotEmpty)
+            .where((product) =>
+                product.name.isNotEmpty &&
+                product.barcode != null &&
+                product.barcode!.isNotEmpty)
             .toList();
       } else {
         throw Exception('Failed to load barcode sheet: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error fetching barcode products: $e');
+      debugPrint('❌ Error fetching barcode products: $e');
       return [];
     }
   }
@@ -66,11 +71,11 @@ class BarcodeSheetsService {
     try {
       final sheetName = await _getSheetNameByGid(_generalProductsSheetGid);
       if (sheetName == null) {
-        print('❌ Could not find general products sheet');
+        debugPrint('❌ Could not find general products sheet');
         return [];
       }
 
-      print('📊 Loading general products from sheet: $sheetName');
+      debugPrint('📊 Loading general products from sheet: $sheetName');
 
       final url = Uri.parse(
         'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId/values/${Uri.encodeComponent(sheetName)}!A2:L?key=$_apiKey',
@@ -83,11 +88,11 @@ class BarcodeSheetsService {
         final values = data['values'] as List<dynamic>?;
 
         if (values == null || values.isEmpty) {
-          print('⚠️ No data found in general products sheet');
+          debugPrint('⚠️ No data found in general products sheet');
           return [];
         }
 
-        print('✅ Found ${values.length} general products');
+        debugPrint('✅ Found ${values.length} general products');
 
         return values
             .asMap()
@@ -99,10 +104,11 @@ class BarcodeSheetsService {
             .where((product) => product.name.isNotEmpty)
             .toList();
       } else {
-        throw Exception('Failed to load general products sheet: ${response.statusCode}');
+        throw Exception(
+            'Failed to load general products sheet: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error fetching general products: $e');
+      debugPrint('❌ Error fetching general products: $e');
       return [];
     }
   }
@@ -120,7 +126,7 @@ class BarcodeSheetsService {
 
       return null;
     } catch (e) {
-      print('❌ Error finding product by barcode: $e');
+      debugPrint('❌ Error finding product by barcode: $e');
       return null;
     }
   }
@@ -150,7 +156,7 @@ class BarcodeSheetsService {
 
       return null;
     } catch (e) {
-      print('❌ Error getting sheet name: $e');
+      debugPrint('❌ Error getting sheet name: $e');
       return null;
     }
   }
@@ -168,7 +174,7 @@ class BarcodeSheetsService {
   /// I: Примечания
   /// J: Источник
   Product _parseProductFromBarcodeSheet(List<dynamic> row, int rowIndex) {
-    final barcode = row.length > 0 ? row[0].toString().trim() : '';
+    final barcode = row.isNotEmpty ? row[0].toString().trim() : '';
     final name = row.length > 1 ? row[1].toString().trim() : '';
     final category = row.length > 2 ? row[2].toString().trim() : 'other';
     final protein = row.length > 3 ? _parseDouble(row[3]) : 0.0;
@@ -177,7 +183,8 @@ class BarcodeSheetsService {
     final carbs = row.length > 6 ? _parseDoubleOrNull(row[6]) : null;
     final calories = row.length > 7 ? _parseDoubleOrNull(row[7]) : null;
     final notes = row.length > 8 ? row[8].toString().trim() : null;
-    final source = row.length > 9 ? row[9].toString().trim() : 'Google Sheets Barcode DB';
+    final source =
+        row.length > 9 ? row[9].toString().trim() : 'Google Sheets Barcode DB';
 
     // Calculate estimated Phe if not measured (1g protein = 50mg Phe)
     final pheEstimated = protein * 50;
@@ -214,7 +221,7 @@ class BarcodeSheetsService {
   /// J: Источник
   /// K: Штрих-код (optional)
   Product _parseProductFromGeneralSheet(List<dynamic> row, int rowIndex) {
-    final name = row.length > 0 ? row[0].toString().trim() : '';
+    final name = row.isNotEmpty ? row[0].toString().trim() : '';
     final category = row.length > 1 ? row[1].toString().trim() : 'other';
     final protein = row.length > 2 ? _parseDouble(row[2]) : 0.0;
     final pheMeasured = row.length > 3 ? _parseDoubleOrNull(row[3]) : null;
@@ -246,13 +253,24 @@ class BarcodeSheetsService {
 
   String _mapCategory(String category) {
     final lower = category.toLowerCase();
-    if (lower.contains('овощ') || lower.contains('vegetable')) return 'vegetables';
+    if (lower.contains('овощ') || lower.contains('vegetable'))
+      return 'vegetables';
     if (lower.contains('фрукт') || lower.contains('fruit')) return 'fruits';
-    if (lower.contains('зерн') || lower.contains('хлеб') || lower.contains('grain') || lower.contains('bread')) return 'grains';
+    if (lower.contains('зерн') ||
+        lower.contains('хлеб') ||
+        lower.contains('grain') ||
+        lower.contains('bread')) return 'grains';
     if (lower.contains('молоч') || lower.contains('dairy')) return 'dairy';
-    if (lower.contains('мяс') || lower.contains('meat') || lower.contains('рыб') || lower.contains('fish')) return 'protein';
-    if (lower.contains('напит') || lower.contains('drink') || lower.contains('beverage')) return 'beverages';
-    if (lower.contains('сладост') || lower.contains('sweet') || lower.contains('конфет')) return 'sweets';
+    if (lower.contains('мяс') ||
+        lower.contains('meat') ||
+        lower.contains('рыб') ||
+        lower.contains('fish')) return 'protein';
+    if (lower.contains('напит') ||
+        lower.contains('drink') ||
+        lower.contains('beverage')) return 'beverages';
+    if (lower.contains('сладост') ||
+        lower.contains('sweet') ||
+        lower.contains('конфет')) return 'sweets';
     return 'other';
   }
 

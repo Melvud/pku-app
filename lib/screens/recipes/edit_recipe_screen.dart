@@ -46,14 +46,22 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.recipe.name);
-    _descriptionController = TextEditingController(text: widget.recipe.description);
-    _servingsController = TextEditingController(text: widget.recipe.servings.toString());
-    _cookingTimeController = TextEditingController(text: widget.recipe.cookingTimeMinutes.toString());
-    _pheController = TextEditingController(text: widget.recipe.phePer100g.toString());
-    _proteinController = TextEditingController(text: widget.recipe.proteinPer100g.toString());
-    _fatController = TextEditingController(text: widget.recipe.fatPer100g?.toString() ?? '');
-    _carbsController = TextEditingController(text: widget.recipe.carbsPer100g?.toString() ?? '');
-    _caloriesController = TextEditingController(text: widget.recipe.caloriesPer100g?.toString() ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.recipe.description);
+    _servingsController =
+        TextEditingController(text: widget.recipe.servings.toString());
+    _cookingTimeController = TextEditingController(
+        text: widget.recipe.cookingTimeMinutes.toString());
+    _pheController =
+        TextEditingController(text: widget.recipe.phePer100g.toString());
+    _proteinController =
+        TextEditingController(text: widget.recipe.proteinPer100g.toString());
+    _fatController =
+        TextEditingController(text: widget.recipe.fatPer100g?.toString() ?? '');
+    _carbsController = TextEditingController(
+        text: widget.recipe.carbsPer100g?.toString() ?? '');
+    _caloriesController = TextEditingController(
+        text: widget.recipe.caloriesPer100g?.toString() ?? '');
 
     _selectedCategory = widget.recipe.category;
     _ingredients = List.from(widget.recipe.ingredients);
@@ -107,9 +115,11 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                           labelText: 'Количество *',
                           hintText: '100',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,1}')),
                         ],
                       ),
                     ),
@@ -120,13 +130,15 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                         value: selectedUnit,
                         decoration: const InputDecoration(
                           labelText: 'Ед.',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         isExpanded: true,
                         items: ['г', 'мл', 'шт', 'ч.л.', 'ст.л.', 'стакан']
                             .map((unit) => DropdownMenuItem(
                                   value: unit,
-                                  child: Text(unit, overflow: TextOverflow.ellipsis),
+                                  child: Text(unit,
+                                      overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
                         onChanged: (value) {
@@ -220,10 +232,8 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
       // Upload new cover image if selected
       String? coverImageUrl = widget.recipe.imageUrl;
       if (_newCoverImage != null) {
-        final coverRef = FirebaseStorage.instance
-            .ref()
-            .child('recipes')
-            .child('${widget.recipe.id}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
+        final coverRef = FirebaseStorage.instance.ref().child('recipes').child(
+            '${widget.recipe.id}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
         await coverRef.putFile(_newCoverImage!);
         coverImageUrl = await coverRef.getDownloadURL();
       }
@@ -426,7 +436,8 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                               top: 8,
                               right: 8,
                               child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white),
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.black54,
                                 ),
@@ -569,7 +580,8 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                   suffixText: 'мг/100г',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -589,7 +601,8 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                   suffixText: 'г/100г',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -612,9 +625,11 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                         suffixText: 'г/100г',
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                     ),
                   ),
@@ -627,9 +642,11 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                         suffixText: 'г/100г',
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                     ),
                   ),
@@ -644,7 +661,8 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
                   suffixText: 'ккал/100г',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],

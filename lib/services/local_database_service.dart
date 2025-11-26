@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Local database service for caching Firebase data
 class LocalDatabaseService {
-  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance =
+      LocalDatabaseService._internal();
   static Database? _database;
 
   factory LocalDatabaseService() {
@@ -130,8 +131,10 @@ class LocalDatabaseService {
       // Add new columns for version 2
       await db.execute('ALTER TABLE recipes ADD COLUMN steps TEXT');
       await db.execute('ALTER TABLE recipes ADD COLUMN servings INTEGER');
-      await db.execute('ALTER TABLE recipes ADD COLUMN isOfficial INTEGER DEFAULT 0');
-      await db.execute('ALTER TABLE recipes ADD COLUMN likesCount INTEGER DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE recipes ADD COLUMN isOfficial INTEGER DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE recipes ADD COLUMN likesCount INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE recipes ADD COLUMN likedBy TEXT');
       await db.execute('ALTER TABLE recipes ADD COLUMN approvedAt INTEGER');
       await db.execute('ALTER TABLE recipes ADD COLUMN rejectionReason TEXT');
@@ -154,7 +157,8 @@ class LocalDatabaseService {
         await db.execute('ALTER TABLE products ADD COLUMN createdBy TEXT');
       } catch (_) {}
       try {
-        await db.execute('ALTER TABLE products ADD COLUMN isUserCreated INTEGER DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE products ADD COLUMN isUserCreated INTEGER DEFAULT 0');
       } catch (_) {}
     }
   }
@@ -233,9 +237,12 @@ class LocalDatabaseService {
           'imageUrl': recipe['imageUrl'],
           'isOfficial': (recipe['isOfficial'] ?? false) ? 1 : 0,
           'likesCount': recipe['likesCount'] ?? 0,
-          'likedBy': recipe['likedBy'] != null ? jsonEncode(recipe['likedBy']) : null,
+          'likedBy':
+              recipe['likedBy'] != null ? jsonEncode(recipe['likedBy']) : null,
           'createdAt': _timestampToMillis(recipe['createdAt']),
-          'approvedAt': recipe['approvedAt'] != null ? _timestampToMillis(recipe['approvedAt']) : null,
+          'approvedAt': recipe['approvedAt'] != null
+              ? _timestampToMillis(recipe['approvedAt'])
+              : null,
           'rejectionReason': recipe['rejectionReason'],
           'lastUpdated': DateTime.now().millisecondsSinceEpoch,
         },
@@ -250,7 +257,7 @@ class LocalDatabaseService {
   Future<List<Map<String, dynamic>>> getCachedRecipes() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('recipes');
-    
+
     // Decode JSON fields
     return maps.map((map) {
       final decoded = Map<String, dynamic>.from(map);
@@ -303,9 +310,19 @@ class LocalDatabaseService {
     await _updateSyncTime('products');
   }
 
-  Future<List<Map<String, dynamic>>> getCachedProducts() async {
+  Future<List<Map<String, dynamic>>> getCachedProducts({String? source}) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('products');
+    final List<Map<String, dynamic>> maps;
+
+    if (source != null) {
+      maps = await db.query(
+        'products',
+        where: 'source = ?',
+        whereArgs: [source],
+      );
+    } else {
+      maps = await db.query('products');
+    }
 
     // Convert isUserCreated from int to bool
     return maps.map((map) {
@@ -348,7 +365,7 @@ class LocalDatabaseService {
     );
 
     if (maps.isEmpty) return null;
-    
+
     final profile = Map<String, dynamic>.from(maps.first);
     profile['isAdmin'] = profile['isAdmin'] == 1;
     return profile;
@@ -377,16 +394,17 @@ class LocalDatabaseService {
     );
 
     if (maps.isEmpty) return null;
-    
+
     return DateTime.fromMillisecondsSinceEpoch(
       maps.first['lastSyncTimestamp'] as int,
     );
   }
 
-  Future<bool> shouldSyncWithFirebase(String key, {Duration maxAge = const Duration(hours: 1)}) async {
+  Future<bool> shouldSyncWithFirebase(String key,
+      {Duration maxAge = const Duration(hours: 1)}) async {
     final lastSync = await getLastSyncTime(key);
     if (lastSync == null) return true;
-    
+
     final age = DateTime.now().difference(lastSync);
     return age > maxAge;
   }

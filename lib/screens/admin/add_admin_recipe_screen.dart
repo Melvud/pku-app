@@ -29,8 +29,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
   final _caloriesController = TextEditingController();
 
   RecipeCategory _selectedCategory = RecipeCategory.snack;
-  List<RecipeIngredient> _ingredients = [];
-  List<RecipeStep> _steps = [];
+  final List<RecipeIngredient> _ingredients = [];
+  final List<RecipeStep> _steps = [];
   Map<int, File> _stepImages = {};
   bool _isSubmitting = false;
   File? _coverImage;
@@ -83,9 +83,11 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                           labelText: 'Количество *',
                           hintText: '100',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,1}')),
                         ],
                       ),
                     ),
@@ -93,16 +95,19 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<String>(
-                        value: selectedUnit,
+                        key: ValueKey(selectedUnit),
+                        initialValue: selectedUnit,
                         decoration: const InputDecoration(
                           labelText: 'Ед.',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         isExpanded: true,
                         items: ['г', 'мл', 'шт', 'ч.л.', 'ст.л.', 'стакан']
                             .map((unit) => DropdownMenuItem(
                                   value: unit,
-                                  child: Text(unit, overflow: TextOverflow.ellipsis),
+                                  child: Text(unit,
+                                      overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
                         onChanged: (value) {
@@ -150,15 +155,16 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
         source: ImageSource.gallery,
       );
 
-      if (image != null) {
+      if (image != null && mounted) {
+        final primaryColor = Theme.of(context).colorScheme.primary;
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: image.path,
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Обрезать фото',
-              toolbarColor: Theme.of(context).colorScheme.primary,
+              toolbarColor: primaryColor,
               toolbarWidgetColor: Colors.white,
-              activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+              activeControlsWidgetColor: primaryColor,
               lockAspectRatio: false,
               hideBottomControls: true,
             ),
@@ -254,7 +260,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                                       top: 8,
                                       right: 8,
                                       child: IconButton(
-                                        icon: const Icon(Icons.close, color: Colors.white),
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.white),
                                         style: IconButton.styleFrom(
                                           backgroundColor: Colors.black87,
                                           padding: const EdgeInsets.all(8),
@@ -276,19 +283,26 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                             OutlinedButton.icon(
                               onPressed: () async {
                                 try {
-                                  final XFile? image = await _imagePicker.pickImage(
+                                  final XFile? image =
+                                      await _imagePicker.pickImage(
                                     source: ImageSource.gallery,
                                   );
 
                                   if (image != null && context.mounted) {
-                                    final croppedFile = await ImageCropper().cropImage(
+                                    final croppedFile =
+                                        await ImageCropper().cropImage(
                                       sourcePath: image.path,
                                       uiSettings: [
                                         AndroidUiSettings(
                                           toolbarTitle: 'Обрезать фото',
-                                          toolbarColor: Theme.of(context).colorScheme.primary,
+                                          toolbarColor: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
                                           toolbarWidgetColor: Colors.white,
-                                          activeControlsWidgetColor: Theme.of(context).colorScheme.primary,
+                                          activeControlsWidgetColor:
+                                              Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                           lockAspectRatio: false,
                                           hideBottomControls: true,
                                         ),
@@ -318,9 +332,12 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                                 }
                               },
                               icon: const Icon(Icons.add_photo_alternate),
-                              label: Text(stepImage == null ? 'Добавить фото' : 'Изменить фото'),
+                              label: Text(stepImage == null
+                                  ? 'Добавить фото'
+                                  : 'Изменить фото'),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                             ),
                           ],
@@ -410,10 +427,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
       // Upload cover image if present
       String? coverImageUrl;
       if (_coverImage != null) {
-        final coverRef = FirebaseStorage.instance
-            .ref()
-            .child('recipes')
-            .child('admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
+        final coverRef = FirebaseStorage.instance.ref().child('recipes').child(
+            'admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_cover.jpg');
         await coverRef.putFile(_coverImage!);
         coverImageUrl = await coverRef.getDownloadURL();
       }
@@ -427,18 +442,20 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
               .ref()
               .child('recipes')
               .child('steps')
-              .child('admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
+              .child(
+                  'admin_${user.uid}_${DateTime.now().millisecondsSinceEpoch}_step_$i.jpg');
           await stepImageRef.putFile(_stepImages[i]!);
           stepImageUrl = await stepImageRef.getDownloadURL();
         }
-        
+
         stepsWithImages.add(RecipeStep(
           instruction: _steps[i].instruction,
           imageUrl: stepImageUrl,
         ));
       }
 
-      final instructionsList = stepsWithImages.map((s) => s.instruction).toList();
+      final instructionsList =
+          stepsWithImages.map((s) => s.instruction).toList();
 
       final recipe = Recipe(
         id: '',
@@ -630,7 +647,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                               top: 8,
                               right: 8,
                               child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white),
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.black54,
                                 ),
@@ -663,7 +681,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<RecipeCategory>(
-                value: _selectedCategory,
+                key: ValueKey(_selectedCategory),
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Категория *',
                 ),
@@ -738,7 +757,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                   suffixText: 'мг/100г',
                   helperText: 'Обязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -758,7 +778,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Обязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -778,7 +799,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -792,7 +814,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                   suffixText: 'г/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -806,7 +829,8 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                   suffixText: 'ккал/100г',
                   helperText: 'Необязательное поле',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -931,9 +955,11 @@ class _AddAdminRecipeScreenState extends State<AddAdminRecipeScreen> {
                       subtitle: hasImage
                           ? const Row(
                               children: [
-                                Icon(Icons.image, size: 14, color: Colors.green),
+                                Icon(Icons.image,
+                                    size: 14, color: Colors.green),
                                 SizedBox(width: 4),
-                                Text('Фото добавлено', style: TextStyle(fontSize: 12)),
+                                Text('Фото добавлено',
+                                    style: TextStyle(fontSize: 12)),
                               ],
                             )
                           : null,

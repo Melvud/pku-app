@@ -44,7 +44,8 @@ class ExportService {
     try {
       // Download Roboto font which supports Cyrillic characters from Google Fonts
       final response = await http.get(
-        Uri.parse('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'),
+        Uri.parse(
+            'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'),
       );
 
       if (response.statusCode == 200) {
@@ -67,7 +68,8 @@ class ExportService {
   }) async {
     try {
       final pdf = pw.Document();
-      final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
+      final dailyStats =
+          stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
 
       // Load font that supports Cyrillic characters
       final font = await _loadFont();
@@ -137,15 +139,21 @@ class ExportService {
               ),
               child: pw.Column(
                 children: [
-                  _buildSummaryRow('Всего Phe',
-                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow(
+                      'Всего Phe',
+                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Среднее Phe в день',
-                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow(
+                      'Среднее Phe в день',
+                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow('Дневной лимит',
+                      '${dailyLimit.toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}', font),
+                  _buildSummaryRow('Активных дней',
+                      '${stats['activeDays']} из ${stats['totalDays']}', font),
                 ],
               ),
             ),
@@ -160,17 +168,25 @@ class ExportService {
               ),
               child: pw.Column(
                 children: [
-                  _buildSummaryRow('Белок',
-                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Белок',
+                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Жиры',
-                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Жиры',
+                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Углеводы',
-                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Углеводы',
+                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Калории',
-                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)', font),
+                  _buildSummaryRow(
+                      'Калории',
+                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)',
+                      font),
                 ],
               ),
             ),
@@ -216,7 +232,7 @@ class ExportService {
                   final protein = (stat['protein'] as num).toDouble();
                   final calories = (stat['calories'] as num).toDouble();
                   final entries = stat['entriesCount'] as int;
-                  
+
                   final progress = dailyLimit > 0 ? (phe / dailyLimit) : 0.0;
                   final color = progress > 0.8
                       ? PdfColors.red50
@@ -252,11 +268,13 @@ class ExportService {
             pw.SizedBox(height: 4),
             pw.Text(
               '• Цветовая индикация: зеленый - до 50% лимита, оранжевый - 50-80%, красный - выше 80%',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
+              style: pw.TextStyle(
+                  fontSize: 9, color: PdfColors.grey600, font: font),
             ),
             pw.Text(
               '• Дни без записей не включены в таблицу',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
+              style: pw.TextStyle(
+                  fontSize: 9, color: PdfColors.grey600, font: font),
             ),
           ],
         ),
@@ -291,57 +309,91 @@ class ExportService {
         excel.delete('Sheet1');
       }
 
-      final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
+      final dailyStats =
+          stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
 
       int row = 0;
 
       // Header
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Статистика питания');
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(
         bold: true,
         fontSize: 16,
       );
       row++;
 
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = excel_lib.TextCellValue(DateFormat('MMMM yyyy', 'ru').format(month));
+      sheet
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: 0, rowIndex: row))
+              .value =
+          excel_lib.TextCellValue(DateFormat('MMMM yyyy', 'ru').format(month));
       row++;
 
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Пользователь: $userName');
       row++;
 
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = excel_lib.TextCellValue('Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
+      sheet
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: 0, rowIndex: row))
+              .value =
+          excel_lib.TextCellValue(
+              'Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
       row += 2;
 
       // Summary Section
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Общие показатели');
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true);
       row++;
 
       final summaryData = [
         ['Показатель', 'Значение'],
         ['Всего Phe', '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг'],
-        ['Среднее Phe в день', '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'],
+        [
+          'Среднее Phe в день',
+          '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'
+        ],
         ['Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг'],
         ['Активных дней', '${stats['activeDays']} из ${stats['totalDays']}'],
         ['Всего белка', '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г'],
-        ['Среднее белка в день', '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г'],
+        [
+          'Среднее белка в день',
+          '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г'
+        ],
         ['Всего жиров', '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г'],
-        ['Всего углеводов', '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г'],
-        ['Всего калорий', '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал'],
-        ['Среднее калорий в день', '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал'],
+        [
+          'Всего углеводов',
+          '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г'
+        ],
+        [
+          'Всего калорий',
+          '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал'
+        ],
+        [
+          'Среднее калорий в день',
+          '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал'
+        ],
       ];
 
       for (var rowData in summaryData) {
         for (var i = 0; i < rowData.length; i++) {
           sheet
-              .cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row))
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: i, rowIndex: row))
               .value = excel_lib.TextCellValue(rowData[i]);
         }
         row++;
@@ -350,16 +402,31 @@ class ExportService {
       row += 2;
 
       // Daily Stats Section
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Детализация по дням');
-      sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      sheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true);
       row++;
 
       // Daily table header
-      final headers = ['День', 'Дата', 'Phe (мг)', '% лимита', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
+      final headers = [
+        'День',
+        'Дата',
+        'Phe (мг)',
+        '% лимита',
+        'Белок (г)',
+        'Жиры (г)',
+        'Углеводы (г)',
+        'Калории',
+        'Записей'
+      ];
       for (var i = 0; i < headers.length; i++) {
-        final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+        final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(
+            columnIndex: i, rowIndex: row));
         cell.value = excel_lib.TextCellValue(headers[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
@@ -378,7 +445,7 @@ class ExportService {
         final carbs = (stat['carbs'] as num).toDouble();
         final calories = (stat['calories'] as num).toDouble();
         final entries = stat['entriesCount'] as int;
-        
+
         final progress = dailyLimit > 0 ? (phe / dailyLimit * 100) : 0.0;
 
         final rowData = [
@@ -397,16 +464,20 @@ class ExportService {
         excel_lib.ExcelColor? bgColor;
         if (entries > 0) {
           if (progress > 80) {
-            bgColor = excel_lib.ExcelColor.fromHexString('#FFE6E6'); // Light red
+            bgColor =
+                excel_lib.ExcelColor.fromHexString('#FFE6E6'); // Light red
           } else if (progress > 50) {
-            bgColor = excel_lib.ExcelColor.fromHexString('#FFF4E6'); // Light orange
+            bgColor =
+                excel_lib.ExcelColor.fromHexString('#FFF4E6'); // Light orange
           } else {
-            bgColor = excel_lib.ExcelColor.fromHexString('#E6FFE6'); // Light green
+            bgColor =
+                excel_lib.ExcelColor.fromHexString('#E6FFE6'); // Light green
           }
         }
 
         for (var i = 0; i < rowData.length; i++) {
-          final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+          final cell = sheet.cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: i, rowIndex: row));
           cell.value = excel_lib.TextCellValue(rowData[i]);
           if (bgColor != null) {
             cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
@@ -451,7 +522,8 @@ class ExportService {
     );
   }
 
-  pw.Widget _buildTableCell(String text, pw.Font font, {bool isHeader = false}) {
+  pw.Widget _buildTableCell(String text, pw.Font font,
+      {bool isHeader = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(4),
       child: pw.Text(
@@ -476,8 +548,10 @@ class ExportService {
   }) async {
     try {
       final pdf = pw.Document();
-      final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
-      final monthlyStats = stats['monthlyStats'] as List<Map<String, dynamic>>? ?? [];
+      final dailyStats =
+          stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
+      final monthlyStats =
+          stats['monthlyStats'] as List<Map<String, dynamic>>? ?? [];
 
       // Load font that supports Cyrillic characters
       final font = await _loadFont();
@@ -547,15 +621,21 @@ class ExportService {
               ),
               child: pw.Column(
                 children: [
-                  _buildSummaryRow('Всего Phe',
-                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow(
+                      'Всего Phe',
+                      '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Среднее Phe в день',
-                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow(
+                      'Среднее Phe в день',
+                      '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг', font),
+                  _buildSummaryRow('Дневной лимит',
+                      '${dailyLimit.toStringAsFixed(0)} мг', font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Активных дней', '${stats['activeDays']} из ${stats['totalDays']}', font),
+                  _buildSummaryRow('Активных дней',
+                      '${stats['activeDays']} из ${stats['totalDays']}', font),
                 ],
               ),
             ),
@@ -570,17 +650,25 @@ class ExportService {
               ),
               child: pw.Column(
                 children: [
-                  _buildSummaryRow('Белок',
-                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Белок',
+                      '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Жиры',
-                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Жиры',
+                      '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgFatPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Углеводы',
-                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)', font),
+                  _buildSummaryRow(
+                      'Углеводы',
+                      '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г (среднее: ${(stats['avgCarbsPerDay'] ?? 0).toStringAsFixed(1)} г/день)',
+                      font),
                   pw.SizedBox(height: 8),
-                  _buildSummaryRow('Калории',
-                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)', font),
+                  _buildSummaryRow(
+                      'Калории',
+                      '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал (среднее: ${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал/день)',
+                      font),
                 ],
               ),
             ),
@@ -609,7 +697,8 @@ class ExportService {
                 children: [
                   // Header
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    decoration:
+                        const pw.BoxDecoration(color: PdfColors.grey200),
                     children: [
                       _buildTableCell('Месяц', font, isHeader: true),
                       _buildTableCell('Phe (мг)', font, isHeader: true),
@@ -624,11 +713,14 @@ class ExportService {
                     final month = monthStat['month'] as int;
                     final monthDate = DateTime(year, month);
                     final totalPhe = (monthStat['totalPhe'] as num).toDouble();
-                    final avgPhe = (monthStat['avgPhePerDay'] as num).toDouble();
-                    final protein = (monthStat['totalProtein'] as num).toDouble();
+                    final avgPhe =
+                        (monthStat['avgPhePerDay'] as num).toDouble();
+                    final protein =
+                        (monthStat['totalProtein'] as num).toDouble();
                     final entries = monthStat['entriesCount'] as int;
 
-                    final progress = dailyLimit > 0 ? (avgPhe / dailyLimit) : 0.0;
+                    final progress =
+                        dailyLimit > 0 ? (avgPhe / dailyLimit) : 0.0;
                     final color = progress > 0.8
                         ? PdfColors.red50
                         : progress > 0.5
@@ -638,7 +730,9 @@ class ExportService {
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(color: color),
                       children: [
-                        _buildTableCell(DateFormat('LLLL yyyy', 'ru').format(monthDate), font),
+                        _buildTableCell(
+                            DateFormat('LLLL yyyy', 'ru').format(monthDate),
+                            font),
                         _buildTableCell(totalPhe.toStringAsFixed(0), font),
                         _buildTableCell(avgPhe.toStringAsFixed(0), font),
                         _buildTableCell(protein.toStringAsFixed(1), font),
@@ -702,7 +796,8 @@ class ExportService {
                   return pw.TableRow(
                     decoration: pw.BoxDecoration(color: color),
                     children: [
-                      _buildTableCell(DateFormat('d MMM yyyy', 'ru').format(date), font),
+                      _buildTableCell(
+                          DateFormat('d MMM yyyy', 'ru').format(date), font),
                       _buildTableCell(phe.toStringAsFixed(0), font),
                       _buildTableCell(protein.toStringAsFixed(1), font),
                       _buildTableCell(calories.toStringAsFixed(0), font),
@@ -727,11 +822,13 @@ class ExportService {
             pw.SizedBox(height: 4),
             pw.Text(
               '• Цветовая индикация: зеленый - до 50% лимита, оранжевый - 50-80%, красный - выше 80%',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
+              style: pw.TextStyle(
+                  fontSize: 9, color: PdfColors.grey600, font: font),
             ),
             pw.Text(
               '• Дни без записей не включены в таблицу',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, font: font),
+              style: pw.TextStyle(
+                  fontSize: 9, color: PdfColors.grey600, font: font),
             ),
           ],
         ),
@@ -739,7 +836,8 @@ class ExportService {
 
       // Save file to Downloads directory
       final output = await _getDownloadsDirectory();
-      final fileName = 'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.pdf';
+      final fileName =
+          'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.pdf';
       final file = File('${output.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
@@ -769,50 +867,82 @@ class ExportService {
         excel.delete('Sheet1');
       }
 
-      final dailyStats = stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
-      final monthlyStats = stats['monthlyStats'] as List<Map<String, dynamic>>? ?? [];
+      final dailyStats =
+          stats['dailyStats'] as List<Map<String, dynamic>>? ?? [];
+      final monthlyStats =
+          stats['monthlyStats'] as List<Map<String, dynamic>>? ?? [];
 
       // ===== SUMMARY SHEET =====
       int row = 0;
 
       // Header
-      summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      summarySheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Статистика питания');
-      summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      summarySheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .cellStyle = excel_lib.CellStyle(bold: true, fontSize: 16);
       row++;
 
-      summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = excel_lib.TextCellValue('Период: ${DateFormat('d MMMM yyyy', 'ru').format(startDate)} - ${DateFormat('d MMMM yyyy', 'ru').format(endDate)}');
+      summarySheet
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: 0, rowIndex: row))
+              .value =
+          excel_lib.TextCellValue(
+              'Период: ${DateFormat('d MMMM yyyy', 'ru').format(startDate)} - ${DateFormat('d MMMM yyyy', 'ru').format(endDate)}');
       row++;
 
-      summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+      summarySheet
+          .cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: 0, rowIndex: row))
           .value = excel_lib.TextCellValue('Пользователь: $userName');
       row++;
 
-      summarySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = excel_lib.TextCellValue('Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
+      summarySheet
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: 0, rowIndex: row))
+              .value =
+          excel_lib.TextCellValue(
+              'Создан: ${DateFormat('d MMMM yyyy, HH:mm', 'ru').format(DateTime.now())}');
       row += 2;
 
       // Summary data
       final summaryData = [
         ['Показатель', 'Значение'],
         ['Всего Phe', '${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг'],
-        ['Среднее Phe в день', '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'],
+        [
+          'Среднее Phe в день',
+          '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)} мг'
+        ],
         ['Дневной лимит', '${dailyLimit.toStringAsFixed(0)} мг'],
         ['Активных дней', '${stats['activeDays']} из ${stats['totalDays']}'],
         ['Всего белка', '${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г'],
-        ['Среднее белка в день', '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г'],
+        [
+          'Среднее белка в день',
+          '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)} г'
+        ],
         ['Всего жиров', '${(stats['totalFat'] ?? 0).toStringAsFixed(1)} г'],
-        ['Всего углеводов', '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г'],
-        ['Всего калорий', '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал'],
-        ['Среднее калорий в день', '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал'],
+        [
+          'Всего углеводов',
+          '${(stats['totalCarbs'] ?? 0).toStringAsFixed(1)} г'
+        ],
+        [
+          'Всего калорий',
+          '${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал'
+        ],
+        [
+          'Среднее калорий в день',
+          '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)} ккал'
+        ],
       ];
 
       for (var rowData in summaryData) {
         for (var i = 0; i < rowData.length; i++) {
           summarySheet
-              .cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row))
+              .cell(excel_lib.CellIndex.indexByColumnRow(
+                  columnIndex: i, rowIndex: row))
               .value = excel_lib.TextCellValue(rowData[i]);
         }
         row++;
@@ -820,9 +950,19 @@ class ExportService {
 
       // ===== MONTHLY SHEET =====
       row = 0;
-      final monthlyHeaders = ['Месяц', 'Всего Phe (мг)', 'Среднее Phe/день (мг)', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
+      final monthlyHeaders = [
+        'Месяц',
+        'Всего Phe (мг)',
+        'Среднее Phe/день (мг)',
+        'Белок (г)',
+        'Жиры (г)',
+        'Углеводы (г)',
+        'Калории',
+        'Записей'
+      ];
       for (var i = 0; i < monthlyHeaders.length; i++) {
-        final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+        final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(
+            columnIndex: i, rowIndex: row));
         cell.value = excel_lib.TextCellValue(monthlyHeaders[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
@@ -866,7 +1006,8 @@ class ExportService {
         }
 
         for (var i = 0; i < rowData.length; i++) {
-          final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+          final cell = monthlySheet.cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: i, rowIndex: row));
           cell.value = excel_lib.TextCellValue(rowData[i]);
           cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
         }
@@ -875,9 +1016,19 @@ class ExportService {
 
       // ===== DAILY SHEET =====
       row = 0;
-      final dailyHeaders = ['Дата', 'Phe (мг)', '% лимита', 'Белок (г)', 'Жиры (г)', 'Углеводы (г)', 'Калории', 'Записей'];
+      final dailyHeaders = [
+        'Дата',
+        'Phe (мг)',
+        '% лимита',
+        'Белок (г)',
+        'Жиры (г)',
+        'Углеводы (г)',
+        'Калории',
+        'Записей'
+      ];
       for (var i = 0; i < dailyHeaders.length; i++) {
-        final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+        final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(
+            columnIndex: i, rowIndex: row));
         cell.value = excel_lib.TextCellValue(dailyHeaders[i]);
         cell.cellStyle = excel_lib.CellStyle(
           bold: true,
@@ -920,7 +1071,8 @@ class ExportService {
         }
 
         for (var i = 0; i < rowData.length; i++) {
-          final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row));
+          final cell = dailySheet.cell(excel_lib.CellIndex.indexByColumnRow(
+              columnIndex: i, rowIndex: row));
           cell.value = excel_lib.TextCellValue(rowData[i]);
           if (bgColor != null) {
             cell.cellStyle = excel_lib.CellStyle(backgroundColorHex: bgColor);
@@ -931,7 +1083,8 @@ class ExportService {
 
       // Save file to Downloads directory
       final output = await _getDownloadsDirectory();
-      final fileName = 'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.xlsx';
+      final fileName =
+          'statistics_${DateFormat('yyyy-MM-dd').format(startDate)}_to_${DateFormat('yyyy-MM-dd').format(endDate)}.xlsx';
       final file = File('${output.path}/$fileName');
 
       final bytes = excel.encode();

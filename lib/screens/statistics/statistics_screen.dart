@@ -93,7 +93,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
   }
 
-  Future<void> _exportData(String format, DateTime startDate, DateTime endDate) async {
+  Future<void> _exportData(
+      String format, DateTime startDate, DateTime endDate) async {
     try {
       final exportService = ExportService();
       final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -103,7 +104,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       setState(() => _isLoading = true);
 
       // Get stats for the date range
-      final rangeStats = await diaryProvider.getDateRangeStats(startDate, endDate);
+      final rangeStats =
+          await diaryProvider.getDateRangeStats(startDate, endDate);
 
       String? filePath;
       if (format == 'pdf') {
@@ -154,7 +156,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final now = DateTime.now();
     int selectedYear = _selectedMonth.year;
     int selectedMonth = _selectedMonth.month;
-
     await showDialog(
       context: context,
       builder: (context) {
@@ -193,7 +194,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     // Month grid
                     GridView.builder(
                       shrinkWrap: true,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         childAspectRatio: 2,
                         crossAxisSpacing: 8,
@@ -204,8 +206,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         final month = index + 1;
                         final monthDate = DateTime(selectedYear, month);
                         final isAvailable = !monthDate.isAfter(now);
-                        final isSelected = selectedYear == _selectedMonth.year &&
-                            month == _selectedMonth.month;
+                        final isSelected =
+                            selectedYear == _selectedMonth.year &&
+                                month == _selectedMonth.month;
 
                         return InkWell(
                           onTap: isAvailable
@@ -213,7 +216,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                   setState(() => selectedMonth = month);
                                   Navigator.pop(context);
                                   this.setState(() {
-                                    _selectedMonth = DateTime(selectedYear, month);
+                                    _selectedMonth =
+                                        DateTime(selectedYear, month);
                                   });
                                   _loadStats();
                                 }
@@ -270,7 +274,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   String _getDaysWord(int count) {
     if (count % 10 == 1 && count % 100 != 11) {
       return 'день';
-    } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
+    } else if ([2, 3, 4].contains(count % 10) &&
+        ![12, 13, 14].contains(count % 100)) {
       return 'дня';
     } else {
       return 'дней';
@@ -351,7 +356,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   @override
   Widget build(BuildContext context) {
     final canGoPrevious = _selectedMonth.year > 2020 ||
-                          (_selectedMonth.year == 2020 && _selectedMonth.month > 1);
+        (_selectedMonth.year == 2020 && _selectedMonth.month > 1);
     final canGoNext = _selectedMonth.isBefore(
       DateTime(DateTime.now().year, DateTime.now().month),
     );
@@ -390,25 +395,33 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     // Month navigation
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 8),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           IconButton(
                             icon: Icon(
                               Icons.chevron_left,
-                              color: canGoPrevious ? Theme.of(context).colorScheme.primary : Colors.grey,
+                              color: canGoPrevious
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey,
                             ),
-                            onPressed: canGoPrevious ? () => _changeMonth(-1) : null,
+                            onPressed:
+                                canGoPrevious ? () => _changeMonth(-1) : null,
                           ),
                           Expanded(
                             child: InkWell(
                               onTap: _showMonthYearPicker,
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 8, horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -417,10 +430,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        DateFormat('LLLL yyyy', 'ru').format(_selectedMonth),
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        DateFormat('LLLL yyyy', 'ru')
+                                            .format(_selectedMonth),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
                                               fontWeight: FontWeight.bold,
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                             ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -430,7 +449,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                     Icon(
                                       Icons.calendar_month,
                                       size: 18,
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
                                   ],
                                 ),
@@ -440,7 +460,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           IconButton(
                             icon: Icon(
                               Icons.chevron_right,
-                              color: canGoNext ? Theme.of(context).colorScheme.primary : Colors.grey,
+                              color: canGoNext
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey,
                             ),
                             onPressed: canGoNext ? () => _changeMonth(1) : null,
                           ),
@@ -492,7 +514,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         const SizedBox(height: 24),
                         Text(
                           'Недостаточно данных',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey.shade700,
                               ),
@@ -509,12 +534,19 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         ),
                         const SizedBox(height: 32),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.3),
                             ),
                           ),
                           child: Column(
@@ -545,7 +577,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               SliverFillRemaining(
                 child: TabBarView(
                   controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(), // Disable swipe for tabs
+                  physics:
+                      const NeverScrollableScrollPhysics(), // Disable swipe for tabs
                   children: [
                     _OverviewTab(stats: _stats!),
                     _DailyTab(stats: _stats!, month: _selectedMonth),
@@ -586,16 +619,20 @@ class _OverviewTab extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.4,
+                childAspectRatio: 1.25,
                 children: [
                   _ModernSummaryCard(
                     title: 'Среднее Phe',
                     value: '${(stats['avgPhePerDay'] ?? 0).toStringAsFixed(0)}',
                     unit: 'мг',
-                    subtitle: 'Всего: ${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг',
+                    subtitle:
+                        'Всего: ${(stats['totalPhe'] ?? 0).toStringAsFixed(0)} мг',
                     color: Colors.purple,
                     icon: Icons.medical_information_outlined,
-                    progress: dailyLimit > 0 ? ((stats['avgPhePerDay'] ?? 0) / dailyLimit).clamp(0.0, 1.0) : 0.0,
+                    progress: dailyLimit > 0
+                        ? ((stats['avgPhePerDay'] ?? 0) / dailyLimit)
+                            .clamp(0.0, 1.0)
+                        : 0.0,
                   ),
                   _ModernSummaryCard(
                     title: 'Активных дней',
@@ -610,17 +647,21 @@ class _OverviewTab extends StatelessWidget {
                   ),
                   _ModernSummaryCard(
                     title: 'Средний белок',
-                    value: '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)}',
+                    value:
+                        '${(stats['avgProteinPerDay'] ?? 0).toStringAsFixed(1)}',
                     unit: 'г',
-                    subtitle: 'Всего: ${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г',
+                    subtitle:
+                        'Всего: ${(stats['totalProtein'] ?? 0).toStringAsFixed(1)} г',
                     color: Colors.blue,
                     icon: Icons.egg_outlined,
                   ),
                   _ModernSummaryCard(
                     title: 'Ср. калории',
-                    value: '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)}',
+                    value:
+                        '${(stats['avgCaloriesPerDay'] ?? 0).toStringAsFixed(0)}',
                     unit: 'ккал',
-                    subtitle: 'Всего: ${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал',
+                    subtitle:
+                        'Всего: ${(stats['totalCalories'] ?? 0).toStringAsFixed(0)} ккал',
                     color: Colors.orange,
                     icon: Icons.local_fire_department_outlined,
                   ),
@@ -652,7 +693,8 @@ class _OverviewTab extends StatelessWidget {
                 icon: Icons.bar_chart,
               ),
               const SizedBox(height: 16),
-              _WeeklyComparisonChart(dailyStats: dailyStats, dailyLimit: dailyLimit),
+              _WeeklyComparisonChart(
+                  dailyStats: dailyStats, dailyLimit: dailyLimit),
               const SizedBox(height: 80),
             ],
           ),
@@ -683,7 +725,8 @@ class _DailyTab extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_month_outlined, size: 64, color: Colors.grey.shade400),
+                Icon(Icons.calendar_month_outlined,
+                    size: 64, color: Colors.grey.shade400),
                 const SizedBox(height: 16),
                 Text(
                   'Нет данных за этот месяц',
@@ -709,7 +752,8 @@ class _DailyTab extends StatelessWidget {
 
             final date = DateTime(month.year, month.month, day);
             final isToday = _isToday(date);
-            final progress = dailyLimit > 0 ? (phe / dailyLimit).clamp(0.0, 1.0) : 0.0;
+            final progress =
+                dailyLimit > 0 ? (phe / dailyLimit).clamp(0.0, 1.0) : 0.0;
 
             Color progressColor;
             if (progress < 0.5) {
@@ -768,19 +812,22 @@ class _DailyTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isToday ? progressColor.withOpacity(0.05) : Colors.white,
+                  color:
+                      isToday ? progressColor.withValues(alpha: 0.05) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isToday ? progressColor : Colors.grey.shade200,
                     width: isToday ? 2 : 1,
                   ),
-                  boxShadow: isToday ? [
-                    BoxShadow(
-                      color: progressColor.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ] : null,
+                  boxShadow: isToday
+                      ? [
+                          BoxShadow(
+                            color: progressColor.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Theme(
                   data: Theme.of(context).copyWith(
@@ -791,7 +838,7 @@ class _DailyTab extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: progressColor.withOpacity(0.1),
+                        color: progressColor.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                         border: Border.all(color: progressColor, width: 2),
                       ),
@@ -841,7 +888,8 @@ class _DailyTab extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(Icons.medical_information, size: 14, color: progressColor),
+                            Icon(Icons.medical_information,
+                                size: 14, color: progressColor),
                             const SizedBox(width: 4),
                             Text(
                               '${phe.toStringAsFixed(0)} мг',
@@ -914,7 +962,8 @@ class _DailyTab extends StatelessWidget {
                                   child: _MiniStatCard(
                                     icon: Icons.local_fire_department_outlined,
                                     label: 'Калории',
-                                    value: '${calories.toStringAsFixed(0)} ккал',
+                                    value:
+                                        '${calories.toStringAsFixed(0)} ккал',
                                     color: Colors.orange,
                                   ),
                                 ),
@@ -922,7 +971,8 @@ class _DailyTab extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(8),
@@ -930,7 +980,8 @@ class _DailyTab extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.restaurant, size: 16, color: Colors.grey.shade600),
+                                  Icon(Icons.restaurant,
+                                      size: 16, color: Colors.grey.shade600),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Записей: $entriesCount',
@@ -987,18 +1038,18 @@ class _ModernSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
+            color.withValues(alpha: 0.1),
+            color.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,7 +1061,7 @@ class _ModernSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 18),
@@ -1022,13 +1073,13 @@ class _ModernSummaryCard extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 3,
-                    backgroundColor: color.withOpacity(0.2),
+                    backgroundColor: color.withValues(alpha: 0.2),
                     valueColor: AlwaysStoppedAnimation(color),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             title,
             style: TextStyle(
@@ -1105,9 +1156,9 @@ class _MiniStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1149,7 +1200,7 @@ class _SectionHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -1220,7 +1271,7 @@ class _ModernPheChart extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1253,7 +1304,8 @@ class _ModernPheChart extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 6),
                     child: Text(
                       value.toInt().toString(),
-                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 9, color: Colors.grey.shade600),
                       textAlign: TextAlign.right,
                     ),
                   );
@@ -1271,14 +1323,17 @@ class _ModernPheChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       value.toInt().toString(),
-                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     ),
                   );
                 },
               ),
             ),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: false),
           minX: 1,
@@ -1309,8 +1364,8 @@ class _ModernPheChart extends StatelessWidget {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Colors.purple.withOpacity(0.3),
-                    Colors.purple.withOpacity(0.05),
+                    Colors.purple.withValues(alpha: 0.3),
+                    Colors.purple.withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -1322,7 +1377,7 @@ class _ModernPheChart extends StatelessWidget {
             horizontalLines: [
               HorizontalLine(
                 y: dailyLimit,
-                color: Colors.red.withOpacity(0.6),
+                color: Colors.red.withValues(alpha: 0.6),
                 strokeWidth: 2,
                 dashArray: [8, 4],
                 label: HorizontalLineLabel(
@@ -1398,7 +1453,7 @@ class _ModernNutritionPieChart extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1589,7 +1644,7 @@ class _WeeklyComparisonChart extends StatelessWidget {
           BarChartRodData(
             toY: avgPhe,
             gradient: LinearGradient(
-              colors: [barColor, barColor.withOpacity(0.7)],
+              colors: [barColor, barColor.withValues(alpha: 0.7)],
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
             ),
@@ -1601,8 +1656,9 @@ class _WeeklyComparisonChart extends StatelessWidget {
     }).toList();
 
     final maxY = weeklyAverages
-        .map((g) => g.barRods.first.toY)
-        .reduce((a, b) => a > b ? a : b) * 1.2;
+            .map((g) => g.barRods.first.toY)
+            .reduce((a, b) => a > b ? a : b) *
+        1.2;
 
     return Container(
       height: 280,
@@ -1612,7 +1668,7 @@ class _WeeklyComparisonChart extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1646,7 +1702,8 @@ class _WeeklyComparisonChart extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 6),
                     child: Text(
                       value.toInt().toString(),
-                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 9, color: Colors.grey.shade600),
                       textAlign: TextAlign.right,
                     ),
                   );
@@ -1662,14 +1719,17 @@ class _WeeklyComparisonChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       'Н${value.toInt() + 1}',
-                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     ),
                   );
                 },
               ),
             ),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
