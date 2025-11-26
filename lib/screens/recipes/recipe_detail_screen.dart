@@ -50,8 +50,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     if (_commentController.text.trim().isEmpty) return;
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final recipesProvider = Provider.of<RecipesProvider>(context, listen: false);
-    
+    final recipesProvider =
+        Provider.of<RecipesProvider>(context, listen: false);
+
     try {
       await recipesProvider.addComment(
         recipeId: widget.recipe.id,
@@ -59,19 +60,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         authorName: userProvider.userProfile?.name ?? 'Аноним',
         parentCommentId: _replyingToCommentId,
       );
-      
+
       _commentController.clear();
       setState(() {
         _replyingToCommentId = null;
         _replyingToAuthorName = null;
       });
-      
+
       // Small delay to ensure Firestore write completes
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Reload comments immediately
       await _loadComments();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -95,9 +96,31 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   }
 
   Future<void> _toggleLike() async {
-    final recipesProvider = Provider.of<RecipesProvider>(context, listen: false);
+    final recipesProvider =
+        Provider.of<RecipesProvider>(context, listen: false);
+
+    // Calculate current state to show correct message
+    final currentRecipe = recipesProvider.recipes.firstWhere(
+        (r) => r.id == widget.recipe.id,
+        orElse: () => widget.recipe);
+    final isLiked = currentRecipe.likedBy.contains(
+      FirebaseAuth.instance.currentUser?.uid ?? '',
+    );
+
     try {
       await recipesProvider.toggleLike(widget.recipe.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isLiked
+                ? 'Рецепт удален из избранного'
+                : 'Рецепт добавлен в избранное'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -211,7 +234,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   Row(
                     children: [
                       Container(
@@ -246,7 +269,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified, size: 14, color: Colors.blue.shade700),
+                              Icon(Icons.verified,
+                                  size: 14, color: Colors.blue.shade700),
                               const SizedBox(width: 4),
                               Text(
                                 'Официальный',
@@ -274,7 +298,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.star, size: 14, color: Colors.amber.shade700),
+                              Icon(Icons.star,
+                                  size: 14, color: Colors.amber.shade700),
                               const SizedBox(width: 4),
                               Text(
                                 'Рекомендация',
@@ -306,13 +331,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   Consumer<RecipesProvider>(
                     builder: (context, provider, child) {
                       Recipe currentRecipe = widget.recipe;
-                      final updatedRecipe = provider.recipes
-                          .firstWhere((r) => r.id == widget.recipe.id, orElse: () => widget.recipe);
+                      final updatedRecipe = provider.recipes.firstWhere(
+                          (r) => r.id == widget.recipe.id,
+                          orElse: () => widget.recipe);
                       if (updatedRecipe.id == widget.recipe.id) {
                         currentRecipe = updatedRecipe;
                       } else {
-                        final myRecipe = provider.myRecipes
-                            .firstWhere((r) => r.id == widget.recipe.id, orElse: () => widget.recipe);
+                        final myRecipe = provider.myRecipes.firstWhere(
+                            (r) => r.id == widget.recipe.id,
+                            orElse: () => widget.recipe);
                         if (myRecipe.id == widget.recipe.id) {
                           currentRecipe = myRecipe;
                         }
@@ -336,14 +363,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: color.withValues(alpha: 0.2),
+                                    backgroundColor:
+                                        color.withValues(alpha: 0.2),
                                     radius: 20,
-                                    child: Icon(Icons.person, color: color, size: 20),
+                                    child: Icon(Icons.person,
+                                        color: color, size: 20),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           widget.recipe.authorName,
@@ -368,14 +398,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               const SizedBox(height: 16),
                               const Divider(height: 1),
                               const SizedBox(height: 16),
-                              
+
                               // Time and Servings
                               Row(
                                 children: [
                                   Expanded(
                                     child: _CompactInfoChip(
                                       icon: Icons.access_time,
-                                      label: '${widget.recipe.cookingTimeMinutes} мин',
+                                      label:
+                                          '${widget.recipe.cookingTimeMinutes} мин',
                                       color: Colors.blue,
                                     ),
                                   ),
@@ -392,23 +423,34 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               const SizedBox(height: 16),
                               const Divider(height: 1),
                               const SizedBox(height: 16),
-                              
+
                               // Likes and Comments
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   InkWell(
-                                    onTap: widget.recipe.status == RecipeStatus.rejected ? null : _toggleLike,
+                                    onTap: widget.recipe.status ==
+                                            RecipeStatus.rejected
+                                        ? null
+                                        : _toggleLike,
                                     borderRadius: BorderRadius.circular(8),
                                     child: Opacity(
-                                      opacity: widget.recipe.status == RecipeStatus.rejected ? 0.5 : 1.0,
+                                      opacity: widget.recipe.status ==
+                                              RecipeStatus.rejected
+                                          ? 0.5
+                                          : 1.0,
                                       child: Padding(
                                         padding: const EdgeInsets.all(8),
                                         child: Row(
                                           children: [
                                             Icon(
-                                              isLiked ? Icons.favorite : Icons.favorite_border,
-                                              color: isLiked ? Colors.red : Colors.grey.shade600,
+                                              isLiked
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isLiked
+                                                  ? Colors.red
+                                                  : Colors.grey.shade600,
                                               size: 22,
                                             ),
                                             const SizedBox(width: 6),
@@ -431,7 +473,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     color: Colors.grey.shade300,
                                   ),
                                   Opacity(
-                                    opacity: widget.recipe.status == RecipeStatus.rejected ? 0.5 : 1.0,
+                                    opacity: widget.recipe.status ==
+                                            RecipeStatus.rejected
+                                        ? 0.5
+                                        : 1.0,
                                     child: Padding(
                                       padding: const EdgeInsets.all(8),
                                       child: Row(
@@ -483,14 +528,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       children: [
                         _NutritionRow(
                           label: 'Фенилаланин',
-                          value: '${widget.recipe.phePer100g.toStringAsFixed(0)} мг',
+                          value:
+                              '${widget.recipe.phePer100g.toStringAsFixed(0)} мг',
                           color: Colors.purple,
                           isHighlighted: true,
                         ),
                         const SizedBox(height: 12),
                         _NutritionRow(
                           label: 'Белок',
-                          value: '${widget.recipe.proteinPer100g.toStringAsFixed(1)} г',
+                          value:
+                              '${widget.recipe.proteinPer100g.toStringAsFixed(1)} г',
                           color: Colors.blue,
                           isHighlighted: true,
                         ),
@@ -498,7 +545,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           const SizedBox(height: 8),
                           _NutritionRow(
                             label: 'Жиры',
-                            value: '${widget.recipe.fatPer100g!.toStringAsFixed(1)} г',
+                            value:
+                                '${widget.recipe.fatPer100g!.toStringAsFixed(1)} г',
                             color: Colors.amber,
                           ),
                         ],
@@ -506,7 +554,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           const SizedBox(height: 8),
                           _NutritionRow(
                             label: 'Углеводы',
-                            value: '${widget.recipe.carbsPer100g!.toStringAsFixed(1)} г',
+                            value:
+                                '${widget.recipe.carbsPer100g!.toStringAsFixed(1)} г',
                             color: Colors.green,
                           ),
                         ],
@@ -514,7 +563,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           const SizedBox(height: 8),
                           _NutritionRow(
                             label: 'Калории',
-                            value: '${widget.recipe.caloriesPer100g!.toStringAsFixed(0)} ккал',
+                            value:
+                                '${widget.recipe.caloriesPer100g!.toStringAsFixed(0)} ккал',
                             color: Colors.orange,
                           ),
                         ],
@@ -620,7 +670,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          
+
                           // Step photo if available
                           if (step.imageUrl != null) ...[
                             GestureDetector(
@@ -654,7 +704,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             ),
                             const SizedBox(height: 12),
                           ],
-                          
+
                           // Step instruction
                           Text(
                             step.instruction,
@@ -665,6 +715,66 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     );
                   }),
                   const SizedBox(height: 12),
+
+                  // Add to Favorites Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Consumer<RecipesProvider>(
+                        builder: (context, provider, child) {
+                          Recipe currentRecipe = widget.recipe;
+                          // Try to find updated recipe in provider to get real-time like status
+                          final updatedRecipe = provider.recipes.firstWhere(
+                              (r) => r.id == widget.recipe.id,
+                              orElse: () => widget.recipe);
+                          if (updatedRecipe.id == widget.recipe.id) {
+                            currentRecipe = updatedRecipe;
+                          } else {
+                            final myRecipe = provider.myRecipes.firstWhere(
+                                (r) => r.id == widget.recipe.id,
+                                orElse: () => widget.recipe);
+                            if (myRecipe.id == widget.recipe.id) {
+                              currentRecipe = myRecipe;
+                            }
+                          }
+
+                          final isLiked = currentRecipe.likedBy.contains(
+                            FirebaseAuth.instance.currentUser?.uid ?? '',
+                          );
+
+                          return OutlinedButton.icon(
+                            onPressed:
+                                widget.recipe.status == RecipeStatus.rejected
+                                    ? null
+                                    : _toggleLike,
+                            icon: Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: isLiked ? Colors.red : color,
+                            ),
+                            label: Text(
+                              isLiked
+                                  ? 'Убрать из избранного'
+                                  : 'Добавить в избранное',
+                              style: TextStyle(
+                                color: isLiked ? Colors.red : color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(
+                                color: isLiked ? Colors.red : color,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
 
                   // Comments section
                   const Divider(height: 32),
@@ -679,7 +789,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       if (_comments.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
@@ -710,7 +821,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.red.shade700),
+                            Icon(Icons.info_outline,
+                                color: Colors.red.shade700),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -860,24 +972,26 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   }
 
   List<Widget> _buildCommentTree() {
-    final topLevelComments = _comments.where((c) => c.parentCommentId == null).toList();
+    final topLevelComments =
+        _comments.where((c) => c.parentCommentId == null).toList();
     final widgets = <Widget>[];
-    
+
     for (final comment in topLevelComments) {
       widgets.add(_buildCommentCard(comment, 0));
-      final replies = _comments.where((c) => c.parentCommentId == comment.id).toList();
+      final replies =
+          _comments.where((c) => c.parentCommentId == comment.id).toList();
       for (final reply in replies) {
         widgets.add(_buildCommentCard(reply, 1));
       }
     }
-    
+
     return widgets;
   }
 
   Widget _buildCommentCard(RecipeComment comment, int level) {
     final color = _getCategoryColor();
     final isAuthor = comment.authorId == widget.recipe.authorId;
-    
+
     return Padding(
       padding: EdgeInsets.only(
         left: level * 32.0,
@@ -973,7 +1087,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         style: TextStyle(fontSize: 12, color: color),
                       ),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

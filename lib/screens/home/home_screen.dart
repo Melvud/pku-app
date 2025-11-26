@@ -9,6 +9,10 @@ import '../../models/diary_entry.dart';
 import '../../models/meal_session.dart';
 import '../products/product_selection_screen.dart';
 import '../products/add_custom_product_screen.dart';
+import '../recipes/recipe_selection_screen.dart';
+import '../recipes/recipe_detail_screen.dart';
+import '../../models/recipe.dart';
+import '../../providers/recipes_provider.dart';
 import '../products/barcode_scanner_screen.dart';
 import '../statistics/statistics_screen.dart';
 import '../diary/edit_diary_entry_screen.dart';
@@ -190,6 +194,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) =>
                           ProductSelectionScreen(mealType: session.type),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.menu_book, color: Colors.orange),
+                ),
+                title: const Text('Выбрать из рецептов'),
+                subtitle: const Text('Добавить готовое блюдо'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RecipeSelectionScreen(
+                        mealType: session.type,
+                      ),
                     ),
                   );
                 },
@@ -582,15 +609,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _showAddProductOptions(context, session),
                             onDeleteEntry: (entryId) =>
                                 diaryProvider.deleteEntry(entryId),
-                            onEntryTap: (entry) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      EditDiaryEntryScreen(entry: entry),
-                                ),
-                              );
-                            },
                             onDeleteMeal: () async {
                               final confirm = await showDialog<bool>(
                                 context: context,
@@ -624,6 +642,50 @@ class _HomeScreenState extends State<HomeScreen> {
                             onEditTime: () => _editMealTime(session),
                             onToggleFormula: () => diaryProvider
                                 .toggleMealSessionFormula(session.id),
+                            onEntryTap: (entry) async {
+                              if (entry.recipeId != null) {
+                                // Fetch recipe and navigate to details
+                                final recipesProvider =
+                                    Provider.of<RecipesProvider>(context,
+                                        listen: false);
+                                Recipe? recipe;
+                                try {
+                                  recipe = recipesProvider.recipes.firstWhere(
+                                      (r) => r.id == entry.recipeId);
+                                } catch (_) {
+                                  try {
+                                    recipe = recipesProvider.myRecipes
+                                        .firstWhere(
+                                            (r) => r.id == entry.recipeId);
+                                  } catch (_) {
+                                    // Not found
+                                  }
+                                }
+
+                                if (recipe != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          RecipeDetailScreen(recipe: recipe!),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Рецепт не найден')),
+                                  );
+                                }
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        EditDiaryEntryScreen(entry: entry),
+                                  ),
+                                );
+                              }
+                            },
                           ),
                         );
                       },

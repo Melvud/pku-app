@@ -19,6 +19,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
   RecipeCategory? _selectedCategory;
   String _searchQuery = '';
   bool _showMyRecipes = false; // Track if showing my recipes
+  bool _showFavorites = false; // Track if showing favorites
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -93,30 +94,51 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _CategoryChip(
+                    label: 'Избранное',
+                    isSelected: _selectedCategory == null &&
+                        !_showMyRecipes &&
+                        _showFavorites,
+                    onTap: () {
+                      setState(() {
+                        _showFavorites = true;
+                        _showMyRecipes = false;
+                        _selectedCategory = null;
+                      });
+                    },
+                  ),
+                  _CategoryChip(
                     label: 'Мои рецепты',
                     isSelected: _showMyRecipes,
                     onTap: () {
                       setState(() {
                         _showMyRecipes = true;
+                        _showFavorites = false;
                         _selectedCategory = null;
                       });
                       // Reload my recipes when switching to this tab
-                      Provider.of<RecipesProvider>(context, listen: false).loadMyRecipes();
+                      Provider.of<RecipesProvider>(context, listen: false)
+                          .loadMyRecipes();
                     },
                   ),
                   _CategoryChip(
                     label: 'Все',
-                    isSelected: !_showMyRecipes && _selectedCategory == null,
+                    isSelected: !_showMyRecipes &&
+                        !_showFavorites &&
+                        _selectedCategory == null,
                     onTap: () => setState(() {
                       _showMyRecipes = false;
+                      _showFavorites = false;
                       _selectedCategory = null;
                     }),
                   ),
                   ...RecipeCategory.values.map((category) => _CategoryChip(
                         label: category.displayName,
-                        isSelected: !_showMyRecipes && _selectedCategory == category,
+                        isSelected: !_showMyRecipes &&
+                            !_showFavorites &&
+                            _selectedCategory == category,
                         onTap: () => setState(() {
                           _showMyRecipes = false;
+                          _showFavorites = false;
                           _selectedCategory = category;
                         }),
                       )),
@@ -158,16 +180,37 @@ class _RecipesScreenState extends State<RecipesScreen> {
               }
 
               List<Recipe> filteredRecipes;
-              
+
               if (_showMyRecipes) {
                 // Show my recipes (all statuses)
                 filteredRecipes = _searchQuery.isNotEmpty
                     ? provider.myRecipes.where((r) {
                         final lowerQuery = _searchQuery.toLowerCase();
                         return r.name.toLowerCase().contains(lowerQuery) ||
-                               r.description.toLowerCase().contains(lowerQuery);
+                            r.description.toLowerCase().contains(lowerQuery);
                       }).toList()
                     : provider.myRecipes;
+              } else if (_showFavorites) {
+                // Show favorites
+                final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                final allRecipes = [...provider.recipes, ...provider.myRecipes];
+                // Deduplicate by ID
+                final uniqueRecipes = <String, Recipe>{};
+                for (var r in allRecipes) {
+                  uniqueRecipes[r.id] = r;
+                }
+
+                filteredRecipes = uniqueRecipes.values.where((r) {
+                  final isLiked = r.likedBy.contains(userId);
+                  if (!isLiked) return false;
+
+                  if (_searchQuery.isNotEmpty) {
+                    final lowerQuery = _searchQuery.toLowerCase();
+                    return r.name.toLowerCase().contains(lowerQuery) ||
+                        r.description.toLowerCase().contains(lowerQuery);
+                  }
+                  return true;
+                }).toList();
               } else {
                 // Show approved recipes with filters
                 filteredRecipes = _searchQuery.isNotEmpty
@@ -502,7 +545,9 @@ class _RecipeCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (showStatus && recipe.status == RecipeStatus.approved && !recipe.isOfficial)
+                  if (showStatus &&
+                      recipe.status == RecipeStatus.approved &&
+                      !recipe.isOfficial)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -615,7 +660,10 @@ class _RecipeCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            recipe.ingredients.take(3).map((i) => i.name).join(', ') +
+                            recipe.ingredients
+                                    .take(3)
+                                    .map((i) => i.name)
+                                    .join(', ') +
                                 (recipe.ingredients.length > 3 ? '...' : ''),
                             style: TextStyle(
                               fontSize: 12,
@@ -692,7 +740,8 @@ class _RecipeCard extends StatelessWidget {
                   if (showStatus) ...[
                     const Divider(height: 1),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -707,11 +756,13 @@ class _RecipeCard extends StatelessWidget {
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Отмена'),
                                     ),
                                     FilledButton(
-                                      onPressed: () => Navigator.pop(context, true),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
                                       style: FilledButton.styleFrom(
                                         backgroundColor: Colors.red,
                                       ),
@@ -723,13 +774,15 @@ class _RecipeCard extends StatelessWidget {
 
                               if (confirm == true && context.mounted) {
                                 try {
-                                  await Provider.of<RecipesProvider>(context, listen: false)
+                                  await Provider.of<RecipesProvider>(context,
+                                          listen: false)
                                       .deleteRecipe(recipe.id);
 
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Рецепт "${recipe.name}" удален'),
+                                        content: Text(
+                                            'Рецепт "${recipe.name}" удален'),
                                         backgroundColor: Colors.green,
                                         behavior: SnackBarBehavior.floating,
                                       ),
@@ -749,10 +802,12 @@ class _RecipeCard extends StatelessWidget {
                               }
                             },
                             icon: const Icon(Icons.delete, size: 16),
-                            label: const Text('Удалить', style: TextStyle(fontSize: 12)),
+                            label: const Text('Удалить',
+                                style: TextStyle(fontSize: 12)),
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             ),
                           ),
                         ],

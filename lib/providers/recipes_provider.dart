@@ -270,6 +270,9 @@ class RecipesProvider with ChangeNotifier {
 
       // Sync with GitHub
       if (recipeName != null) {
+        // Delete images from Storage
+        await _recipeLoader.deleteRecipeImages(recipeName);
+        // Delete from GitHub JSON
         await _recipeLoader.deleteRecipeFromGitHub(recipeName);
       }
 
@@ -329,6 +332,33 @@ class RecipesProvider with ChangeNotifier {
       final recipe = Recipe.fromFirestore(doc);
       final isLiked = recipe.likedBy.contains(userId);
 
+      // Optimistic update
+      final updatedLikedBy = List<String>.from(recipe.likedBy);
+      int updatedLikesCount = recipe.likesCount;
+
+      if (isLiked) {
+        updatedLikedBy.remove(userId);
+        updatedLikesCount = (updatedLikesCount - 1).clamp(0, 999999);
+      } else {
+        updatedLikedBy.add(userId);
+        updatedLikesCount++;
+      }
+
+      // Update local lists immediately
+      void updateList(List<Recipe> list) {
+        final index = list.indexWhere((r) => r.id == recipeId);
+        if (index != -1) {
+          list[index] = list[index].copyWith(
+            likedBy: updatedLikedBy,
+            likesCount: updatedLikesCount,
+          );
+        }
+      }
+
+      updateList(_recipes);
+      updateList(_myRecipes);
+      notifyListeners();
+
       if (isLiked) {
         // Unlike
         await recipeRef.update({
@@ -343,13 +373,12 @@ class RecipesProvider with ChangeNotifier {
         });
       }
 
-      // Refresh recipes lists
-      await loadApprovedRecipes();
-      await loadMyRecipes();
-
       debugPrint('✅ Toggled like on recipe $recipeId');
     } catch (e) {
       debugPrint('❌ Error toggling like: $e');
+      // Revert on error (reload)
+      await loadApprovedRecipes();
+      await loadMyRecipes();
       rethrow;
     }
   }

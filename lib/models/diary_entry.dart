@@ -14,6 +14,7 @@ enum MealType {
 class DiaryEntry {
   final String id;
   final String userId;
+  final String? recipeId; // ID рецепта, если запись создана из рецепта
   final String? productId;
   final String productName;
   final double portionG;
@@ -25,14 +26,15 @@ class DiaryEntry {
   final double? caloriesInPortion;
   final bool isMedicalFormula;
   final MealType mealType;
-  final String? customMealName; // Для кастомных приемов пищи
+  final String? customMealName;
   final DateTime timestamp;
-  final DateTime? mealTime; // Время приема пищи
+  final DateTime? mealTime;
 
   DiaryEntry({
     required this.id,
     required this.userId,
     this.productId,
+    this.recipeId,
     required this.productName,
     required this.portionG,
     required this.pheUsedPer100g,
@@ -52,6 +54,7 @@ class DiaryEntry {
     return {
       'userId': userId,
       'productId': productId,
+      'recipeId': recipeId,
       'productName': productName,
       'portionG': portionG,
       'pheUsedPer100g': pheUsedPer100g,
@@ -74,6 +77,7 @@ class DiaryEntry {
       id: doc.id,
       userId: data['userId'] ?? '',
       productId: data['productId'],
+      recipeId: data['recipeId'],
       productName: data['productName'] ?? '',
       portionG: (data['portionG'] ?? 0).toDouble(),
       pheUsedPer100g: (data['pheUsedPer100g'] ?? 0).toDouble(),
@@ -89,8 +93,8 @@ class DiaryEntry {
       ),
       customMealName: data['customMealName'],
       timestamp: (data['timestamp'] as Timestamp).toDate(),
-      mealTime: data['mealTime'] != null 
-          ? (data['mealTime'] as Timestamp).toDate() 
+      mealTime: data['mealTime'] != null
+          ? (data['mealTime'] as Timestamp).toDate()
           : null,
     );
   }

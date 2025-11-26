@@ -218,6 +218,7 @@ class DiaryProvider with ChangeNotifier {
     required MealType mealType,
     String? customMealName,
     DateTime? mealTime,
+    String? recipeId, // Optional recipe ID
   }) async {
     if (_auth.currentUser == null) return;
 
@@ -238,6 +239,7 @@ class DiaryProvider with ChangeNotifier {
         id: '',
         userId: _auth.currentUser!.uid,
         productId: product.id,
+        recipeId: recipeId,
         productName: product.name,
         portionG: portionG,
         pheUsedPer100g: product.pheToUse,

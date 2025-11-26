@@ -10,11 +10,13 @@ import '../../models/diary_entry.dart';
 class EditProductPortionScreen extends StatefulWidget {
   final Product product;
   final MealType mealType;
+  final String? recipeId; // Optional recipe ID
 
   const EditProductPortionScreen({
     super.key,
     required this.product,
     required this.mealType,
+    this.recipeId,
   });
 
   @override
@@ -100,21 +102,23 @@ class _EditProductPortionScreenState extends State<EditProductPortionScreen> {
       if (!mounted) return;
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
 
-      await diaryProvider.addCustomEntry(
-        productName: widget.product.name,
+      await diaryProvider.addEntry(
+        product: widget.product.copyWith(
+          pheEstimatedPer100g: double.parse(_pheController.text),
+          proteinPer100g: double.parse(_proteinController.text),
+          fatPer100g: _fatController.text.isNotEmpty
+              ? double.parse(_fatController.text)
+              : null,
+          carbsPer100g: _carbsController.text.isNotEmpty
+              ? double.parse(_carbsController.text)
+              : null,
+          caloriesPer100g: _caloriesController.text.isNotEmpty
+              ? double.parse(_caloriesController.text)
+              : null,
+        ),
         portionG: double.parse(_portionController.text),
-        pheUsedPer100g: double.parse(_pheController.text),
-        proteinPer100g: double.parse(_proteinController.text),
         mealType: widget.mealType,
-        fatPer100g: _fatController.text.isNotEmpty
-            ? double.parse(_fatController.text)
-            : null,
-        carbsPer100g: _carbsController.text.isNotEmpty
-            ? double.parse(_carbsController.text)
-            : null,
-        caloriesPer100g: _caloriesController.text.isNotEmpty
-            ? double.parse(_caloriesController.text)
-            : null,
+        recipeId: widget.recipeId,
       );
 
       if (mounted) {

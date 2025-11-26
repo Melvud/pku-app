@@ -42,9 +42,10 @@ class RecipeLoaderService {
       if (jsonList.isEmpty) return;
 
       debugPrint(
-          '📦 Found ${jsonList.length} items in GitHub file. Checking for new recipes...');
+          '📦 Found ${jsonList.length} items in GitHub file. Processing...');
 
       int addedCount = 0;
+      int updatedCount = 0;
       int skippedCount = 0;
 
       for (final recipeJson in jsonList) {
@@ -63,63 +64,96 @@ class RecipeLoaderService {
             .limit(1)
             .get();
 
+        // Process images (upload if local asset)
+        // We can access local assets via rootBundle even if the JSON comes from GitHub
+        String? imageUrl = recipeJson['imageUrl'];
+        if (imageUrl != null && imageUrl.startsWith('assets/')) {
+          try {
+            imageUrl = await _uploadImage(imageUrl, name, 'cover');
+            recipeJson['imageUrl'] = imageUrl;
+          } catch (e) {
+            debugPrint('⚠️ Could not upload image $imageUrl: $e');
+          }
+        }
+
+        if (recipeJson['steps'] != null) {
+          final steps = recipeJson['steps'] as List<dynamic>;
+          for (int i = 0; i < steps.length; i++) {
+            final step = steps[i] as Map<String, dynamic>;
+            String? stepImageUrl = step['imageUrl'];
+            if (stepImageUrl != null && stepImageUrl.startsWith('assets/')) {
+              try {
+                stepImageUrl =
+                    await _uploadImage(stepImageUrl, name, 'step_$i');
+                step['imageUrl'] = stepImageUrl;
+              } catch (e) {
+                debugPrint('⚠️ Could not upload step image $stepImageUrl: $e');
+              }
+            }
+          }
+        }
+
         if (existingDocs.docs.isNotEmpty) {
-          skippedCount++;
+          // UPDATE existing recipe
+          final docId = existingDocs.docs.first.id;
+          final existingData =
+              existingDocs.docs.first.data() as Map<String, dynamic>;
+
+          bool needsUpdate = false;
+          final Map<String, dynamic> updates = {};
+
+          // 1. Fix isOfficial flag
+          if (existingData['isOfficial'] == true) {
+            updates['isOfficial'] = false;
+            needsUpdate = true;
+          }
+
+          // 2. Update cover image URL if changed
+          if (imageUrl != null && imageUrl != existingData['imageUrl']) {
+            updates['imageUrl'] = imageUrl;
+            needsUpdate = true;
+          }
+
+          // 3. Update steps (to ensure step images are shown)
+          // We always update steps if they exist in JSON, to ensure images are synced
+          if (recipeJson['steps'] != null) {
+            // Parse steps to list of maps
+            final List<Map<String, dynamic>> newSteps =
+                (recipeJson['steps'] as List<dynamic>)
+                    .map((s) => s as Map<String, dynamic>)
+                    .toList();
+
+            // Compare with existing steps to avoid unnecessary writes?
+            // For simplicity and to fix the bug, let's just update.
+            updates['steps'] = newSteps;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await _firestore.collection('recipes').doc(docId).update(updates);
+            updatedCount++;
+            debugPrint('🔄 Updated existing recipe: $name');
+          } else {
+            skippedCount++;
+          }
           continue;
         }
 
         // Create new recipe object
         try {
-          // For GitHub sync, we assume images are either URLs or we skip local asset upload logic
-          // as we can't upload local assets from a remote JSON easily without the assets being present.
-          // However, if the user has the assets locally (which they should if they are running the app),
-          // we could try to upload them. But for now, let's assume the JSON on GitHub might point to
-          // URLs or assets that are already uploaded or handled.
-
-          // If the recipe has local asset paths, we try to upload them if we can find them in the bundle.
-          // Since we are running the app, we have access to assets.
-
-          String? imageUrl = recipeJson['imageUrl'];
-          if (imageUrl != null && imageUrl.startsWith('assets/')) {
-            try {
-              imageUrl = await _uploadImage(imageUrl, name, 'cover');
-              recipeJson['imageUrl'] = imageUrl;
-            } catch (e) {
-              debugPrint('⚠️ Could not upload image $imageUrl: $e');
-            }
-          }
-
-          if (recipeJson['steps'] != null) {
-            final steps = recipeJson['steps'] as List<dynamic>;
-            for (int i = 0; i < steps.length; i++) {
-              final step = steps[i] as Map<String, dynamic>;
-              String? stepImageUrl = step['imageUrl'];
-              if (stepImageUrl != null && stepImageUrl.startsWith('assets/')) {
-                try {
-                  stepImageUrl =
-                      await _uploadImage(stepImageUrl, name, 'step_$i');
-                  step['imageUrl'] = stepImageUrl;
-                } catch (e) {
-                  debugPrint(
-                      '⚠️ Could not upload step image $stepImageUrl: $e');
-                }
-              }
-            }
-          }
-
           final recipe = _createRecipeFromTemplate(recipeJson);
 
           // Upload to Firestore
           await _firestore.collection('recipes').add(recipe.toFirestore());
           addedCount++;
-          debugPrint('✅ Added new recipe from GitHub: $name');
+          debugPrint('✅ Added new recipe: $name');
         } catch (e) {
           debugPrint('❌ Error creating recipe "$name": $e');
         }
       }
 
       debugPrint(
-          '🏁 Recipe loading complete. Added: $addedCount, Skipped: $skippedCount');
+          '🏁 Recipe loading complete. Added: $addedCount, Updated: $updatedCount, Skipped: $skippedCount');
     } catch (e) {
       debugPrint('❌ Error in RecipeLoaderService: $e');
     }
@@ -150,15 +184,13 @@ class RecipeLoaderService {
         final item = jsonList[i];
         if (item is Map<String, dynamic> && item['name'] == recipe.name) {
           // Update fields
-          jsonList[i] = _recipeToJson(recipe,
-              item); // Preserve existing fields like documentation if any
+          jsonList[i] = _recipeToJson(recipe, item);
           found = true;
           break;
         }
       }
 
       if (!found) {
-        // Add as new if not found (though usually it should be there)
         jsonList.add(_recipeToJson(recipe, {}));
       }
 
@@ -204,6 +236,42 @@ class RecipeLoaderService {
       debugPrint('✅ Recipe deleted from GitHub');
     } catch (e) {
       debugPrint('❌ Error deleting recipe from GitHub: $e');
+    }
+  }
+
+  // Delete recipe images from Storage
+  Future<void> deleteRecipeImages(String recipeName,
+      {int stepCount = 10}) async {
+    try {
+      debugPrint('🗑️ Deleting images for "$recipeName"...');
+      final String filePrefix =
+          recipeName.replaceAll(RegExp(r'\s+'), '_').toLowerCase();
+
+      // Delete cover
+      try {
+        await _storage
+            .ref()
+            .child('recipes/images/${filePrefix}_cover.jpg')
+            .delete();
+        debugPrint('✅ Deleted cover image');
+      } catch (e) {
+        // Ignore if not found
+      }
+
+      // Delete step images (try up to stepCount)
+      for (int i = 0; i < stepCount; i++) {
+        try {
+          await _storage
+              .ref()
+              .child('recipes/images/${filePrefix}_step_$i.jpg')
+              .delete();
+          debugPrint('✅ Deleted step $i image');
+        } catch (e) {
+          // Ignore
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error deleting images: $e');
     }
   }
 
@@ -260,13 +328,12 @@ class RecipeLoaderService {
   // Helper: Convert Recipe to JSON for file
   Map<String, dynamic> _recipeToJson(
       Recipe recipe, Map<String, dynamic> existing) {
-    // We want to keep the structure compatible with our JSON template
     return {
       'name': recipe.name,
       'description': recipe.description,
       'category': recipe.category.name,
       'ingredients': recipe.ingredients.map((i) => i.toMap()).toList(),
-      'instructions': recipe.instructions, // Keep for backward compatibility
+      'instructions': recipe.instructions,
       'steps': recipe.steps?.map((s) => s.toMap()).toList(),
       'servings': recipe.servings,
       'cookingTimeMinutes': recipe.cookingTimeMinutes,
@@ -275,8 +342,7 @@ class RecipeLoaderService {
       'fatPer100g': recipe.fatPer100g,
       'carbsPer100g': recipe.carbsPer100g,
       'caloriesPer100g': recipe.caloriesPer100g,
-      'imageUrl': recipe.imageUrl, // This might be a URL now
-      // Preserve documentation if it exists in the original item
+      'imageUrl': recipe.imageUrl,
       if (existing.containsKey('_documentation'))
         '_documentation': existing['_documentation'],
     };
@@ -309,7 +375,6 @@ class RecipeLoaderService {
   }
 
   Recipe _createRecipeFromTemplate(Map<String, dynamic> data) {
-    // Helper to parse category safely
     RecipeCategory parseCategory(String? value) {
       if (value == null) return RecipeCategory.snack;
       return RecipeCategory.values.firstWhere(
@@ -318,7 +383,6 @@ class RecipeLoaderService {
       );
     }
 
-    // Helper to parse ingredients
     List<RecipeIngredient> parseIngredients(List<dynamic>? list) {
       if (list == null) return [];
       return list.map((item) {
@@ -331,7 +395,6 @@ class RecipeLoaderService {
       }).toList();
     }
 
-    // Helper to parse steps
     List<RecipeStep> parseSteps(List<dynamic>? list) {
       if (list == null) return [];
       return list.map((item) {
@@ -344,7 +407,7 @@ class RecipeLoaderService {
     }
 
     return Recipe(
-      id: '', // Firestore will assign ID
+      id: '',
       name: data['name'] ?? 'Без названия',
       description: data['description'] ?? '',
       category: parseCategory(data['category']),
@@ -360,12 +423,12 @@ class RecipeLoaderService {
       carbsPer100g: data['carbsPer100g']?.toDouble(),
       caloriesPer100g: data['caloriesPer100g']?.toDouble(),
       imageUrl: data['imageUrl'],
-      authorId: 'admin', // System/Admin ID
+      authorId: 'admin',
       authorName: 'Admin',
       status: RecipeStatus.approved,
       createdAt: DateTime.now(),
       approvedAt: DateTime.now(),
-      isOfficial: false, // Changed from true
+      isOfficial: false,
       isRecommended: true,
       likesCount: 0,
       likedBy: [],
