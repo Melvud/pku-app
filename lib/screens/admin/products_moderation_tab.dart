@@ -43,7 +43,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle, size: 64, color: Colors.green.shade300),
+                Icon(Icons.check_circle,
+                    size: 64, color: Colors.green.shade300),
                 const SizedBox(height: 16),
                 const Text(
                   'Нет продуктов на проверке',
@@ -85,7 +86,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
     );
   }
 
-  Future<void> _showApproveDialog(BuildContext context, PendingProduct product) async {
+  Future<void> _showApproveDialog(
+      BuildContext context, PendingProduct product) async {
     final notesController = TextEditingController();
 
     final result = await showDialog<bool>(
@@ -108,7 +110,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber, color: Colors.amber.shade900, size: 20),
+                    Icon(Icons.warning_amber,
+                        color: Colors.amber.shade900, size: 20),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -143,13 +146,14 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
       ),
     );
 
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       try {
         await Provider.of<AdminProvider>(context, listen: false).approveProduct(
           product.id,
-          adminNotes: notesController.text.isNotEmpty ? notesController.text : null,
+          adminNotes:
+              notesController.text.isNotEmpty ? notesController.text : null,
         );
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Продукт "${product.name}" одобрен'),
@@ -158,7 +162,7 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка: $e'),
@@ -170,7 +174,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
     }
   }
 
-  Future<void> _showRejectDialog(BuildContext context, PendingProduct product) async {
+  Future<void> _showRejectDialog(
+      BuildContext context, PendingProduct product) async {
     final reasonController = TextEditingController();
 
     final result = await showDialog<bool>(
@@ -211,13 +216,13 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
       ),
     );
 
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       try {
         await Provider.of<AdminProvider>(context, listen: false).rejectProduct(
           product.id,
           reasonController.text.trim(),
         );
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Продукт "${product.name}" отклонен'),
@@ -226,7 +231,7 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка: $e'),
@@ -238,13 +243,19 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
     }
   }
 
-  Future<void> _showEditDialog(BuildContext context, PendingProduct product) async {
+  Future<void> _showEditDialog(
+      BuildContext context, PendingProduct product) async {
     final nameController = TextEditingController(text: product.name);
-    final proteinController = TextEditingController(text: product.proteinPer100g.toStringAsFixed(1));
-    final pheController = TextEditingController(text: product.pheToUse.toStringAsFixed(1));
-    final fatController = TextEditingController(text: product.fatPer100g?.toStringAsFixed(1) ?? '');
-    final carbsController = TextEditingController(text: product.carbsPer100g?.toStringAsFixed(1) ?? '');
-    final caloriesController = TextEditingController(text: product.caloriesPer100g?.toStringAsFixed(1) ?? '');
+    final proteinController =
+        TextEditingController(text: product.proteinPer100g.toStringAsFixed(1));
+    final pheController =
+        TextEditingController(text: product.pheToUse.toStringAsFixed(1));
+    final fatController = TextEditingController(
+        text: product.fatPer100g?.toStringAsFixed(1) ?? '');
+    final carbsController = TextEditingController(
+        text: product.carbsPer100g?.toStringAsFixed(1) ?? '');
+    final caloriesController = TextEditingController(
+        text: product.caloriesPer100g?.toStringAsFixed(1) ?? '');
 
     final result = await showDialog<bool>(
       context: context,
@@ -264,7 +275,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
               const SizedBox(height: 12),
               TextField(
                 controller: proteinController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -277,7 +289,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
               const SizedBox(height: 12),
               TextField(
                 controller: pheController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -285,14 +298,17 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
                   labelText: 'Фенилаланин (на 100г)',
                   suffixText: 'мг',
                   border: const OutlineInputBorder(),
-                  helperText: product.isPheCalculated ? 'Был рассчитан автоматически' : null,
+                  helperText: product.isPheCalculated
+                      ? 'Был рассчитан автоматически'
+                      : null,
                   helperStyle: TextStyle(color: Colors.orange.shade700),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: fatController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -305,7 +321,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
               const SizedBox(height: 12),
               TextField(
                 controller: carbsController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -318,7 +335,8 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
               const SizedBox(height: 12),
               TextField(
                 controller: caloriesController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
@@ -344,22 +362,32 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
       ),
     );
 
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       try {
         final updatedProduct = product.copyWith(
           name: nameController.text.trim(),
-          proteinPer100g: double.tryParse(proteinController.text) ?? product.proteinPer100g,
-          pheEstimatedPer100g: double.tryParse(pheController.text) ?? product.pheEstimatedPer100g,
-          pheMeasuredPer100g: double.tryParse(pheController.text), // Admin edited, so it's now measured
+          proteinPer100g:
+              double.tryParse(proteinController.text) ?? product.proteinPer100g,
+          pheEstimatedPer100g: double.tryParse(pheController.text) ??
+              product.pheEstimatedPer100g,
+          pheMeasuredPer100g: double.tryParse(
+              pheController.text), // Admin edited, so it's now measured
           isPheCalculated: false, // Admin verified/edited
-          fatPer100g: fatController.text.isNotEmpty ? double.tryParse(fatController.text) : null,
-          carbsPer100g: carbsController.text.isNotEmpty ? double.tryParse(carbsController.text) : null,
-          caloriesPer100g: caloriesController.text.isNotEmpty ? double.tryParse(caloriesController.text) : null,
+          fatPer100g: fatController.text.isNotEmpty
+              ? double.tryParse(fatController.text)
+              : null,
+          carbsPer100g: carbsController.text.isNotEmpty
+              ? double.tryParse(carbsController.text)
+              : null,
+          caloriesPer100g: caloriesController.text.isNotEmpty
+              ? double.tryParse(caloriesController.text)
+              : null,
         );
 
-        await Provider.of<AdminProvider>(context, listen: false).updatePendingProduct(updatedProduct);
+        await Provider.of<AdminProvider>(context, listen: false)
+            .updatePendingProduct(updatedProduct);
 
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Продукт обновлен'),
@@ -368,7 +396,7 @@ class _ProductsModerationTabState extends State<ProductsModerationTab> {
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка: $e'),
@@ -405,8 +433,12 @@ class _ProductModerationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.3),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
@@ -425,7 +457,8 @@ class _ProductModerationCard extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: product.action == PendingProductAction.add
                                   ? Colors.green.shade100
@@ -436,9 +469,10 @@ class _ProductModerationCard extends StatelessWidget {
                               product.actionDisplayName,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: product.action == PendingProductAction.add
-                                    ? Colors.green.shade900
-                                    : Colors.blue.shade900,
+                                color:
+                                    product.action == PendingProductAction.add
+                                        ? Colors.green.shade900
+                                        : Colors.blue.shade900,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -473,7 +507,8 @@ class _ProductModerationCard extends StatelessWidget {
               color: Colors.amber.shade50,
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber, color: Colors.amber.shade900, size: 20),
+                  Icon(Icons.warning_amber,
+                      color: Colors.amber.shade900, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -494,21 +529,33 @@ class _ProductModerationCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _InfoRow(label: 'Белок', value: '${product.proteinPer100g.toStringAsFixed(1)} г'),
+                _InfoRow(
+                    label: 'Белок',
+                    value: '${product.proteinPer100g.toStringAsFixed(1)} г'),
                 _InfoRow(
                   label: 'Фенилаланин',
                   value: '${product.pheToUse.toStringAsFixed(1)} мг',
                   hasWarning: product.isPheCalculated,
                 ),
                 if (product.fatPer100g != null)
-                  _InfoRow(label: 'Жиры', value: '${product.fatPer100g!.toStringAsFixed(1)} г'),
+                  _InfoRow(
+                      label: 'Жиры',
+                      value: '${product.fatPer100g!.toStringAsFixed(1)} г'),
                 if (product.carbsPer100g != null)
-                  _InfoRow(label: 'Углеводы', value: '${product.carbsPer100g!.toStringAsFixed(1)} г'),
+                  _InfoRow(
+                      label: 'Углеводы',
+                      value: '${product.carbsPer100g!.toStringAsFixed(1)} г'),
                 if (product.caloriesPer100g != null)
-                  _InfoRow(label: 'Калории', value: '${product.caloriesPer100g!.toStringAsFixed(0)} ккал'),
+                  _InfoRow(
+                      label: 'Калории',
+                      value:
+                          '${product.caloriesPer100g!.toStringAsFixed(0)} ккал'),
                 if (product.barcode != null) ...[
                   const Divider(),
-                  _InfoRow(label: 'Штрих-код', value: product.barcode!, isMono: true),
+                  _InfoRow(
+                      label: 'Штрих-код',
+                      value: product.barcode!,
+                      isMono: true),
                 ],
                 if (product.notes != null && product.notes!.isNotEmpty) ...[
                   const Divider(),
@@ -530,7 +577,8 @@ class _ProductModerationCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(12)),
             ),
             child: Row(
               children: [
@@ -592,7 +640,8 @@ class _InfoRow extends StatelessWidget {
                 ),
                 if (hasWarning) ...[
                   const SizedBox(width: 4),
-                  Icon(Icons.warning_amber, size: 14, color: Colors.orange.shade700),
+                  Icon(Icons.warning_amber,
+                      size: 14, color: Colors.orange.shade700),
                 ],
               ],
             ),

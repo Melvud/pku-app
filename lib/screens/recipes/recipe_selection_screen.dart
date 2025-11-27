@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/recipes_provider.dart';
 import '../../models/recipe.dart';
 import '../../models/product.dart';
-import '../../models/meal_session.dart';
+
 import '../../models/diary_entry.dart'; // For MealType
 import '../products/edit_product_portion_screen.dart';
 
@@ -238,7 +238,9 @@ class _RecipeSelectionScreenState extends State<RecipeSelectionScreen> {
                             Text(
                               'Рецепты не найдены',
                               style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 16),
+                                  color: Colors.grey[500]!
+                                      .withAlpha((255 * 0.1).round()),
+                                  fontSize: 16),
                             ),
                           ],
                         ),

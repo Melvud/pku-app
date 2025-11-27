@@ -6,7 +6,6 @@ import '../../models/recipe.dart';
 import '../../widgets/app_header.dart';
 import 'recipe_detail_screen.dart';
 import 'add_recipe_screen.dart';
-import 'my_recipes_screen.dart';
 
 class RecipesScreen extends StatefulWidget {
   const RecipesScreen({super.key});

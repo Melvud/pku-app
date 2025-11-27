@@ -213,9 +213,17 @@ class RecipesProvider with ChangeNotifier {
 
     try {
       // If recipe is not recommended, set status to pending for re-moderation
-      final updatedRecipe = recipe.isRecommended
-          ? recipe
-          : recipe.copyWith(status: RecipeStatus.pending);
+      // BUT if it was private, keep it private unless explicitly published
+      RecipeStatus newStatus = recipe.status;
+      if (!recipe.isRecommended) {
+        if (recipe.status == RecipeStatus.approved ||
+            recipe.status == RecipeStatus.rejected) {
+          newStatus = RecipeStatus.pending;
+        }
+      }
+
+      final updatedRecipe =
+          recipe.isRecommended ? recipe : recipe.copyWith(status: newStatus);
 
       await _firestore
           .collection('recipes')
@@ -228,7 +236,7 @@ class RecipesProvider with ChangeNotifier {
         _myRecipes[index] = updatedRecipe;
       }
 
-      // Remove from approved recipes if it's now pending
+      // Remove from approved recipes if it's now pending or private
       if (!recipe.isRecommended) {
         _recipes.removeWhere((r) => r.id == recipe.id);
       }
@@ -246,6 +254,31 @@ class RecipesProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Ошибка обновления рецепта: $e';
       debugPrint('❌ Error updating recipe: $e');
+      rethrow;
+    }
+  }
+
+  // Publish recipe (send to moderation)
+  Future<void> publishRecipe(String recipeId) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      await _firestore.collection('recipes').doc(recipeId).update({
+        'status': RecipeStatus.pending.name,
+      });
+
+      // Update in local lists
+      final index = _myRecipes.indexWhere((r) => r.id == recipeId);
+      if (index != -1) {
+        _myRecipes[index] =
+            _myRecipes[index].copyWith(status: RecipeStatus.pending);
+      }
+
+      notifyListeners();
+      debugPrint('✅ Recipe published (sent to moderation)');
+    } catch (e) {
+      _error = 'Ошибка публикации рецепта: $e';
+      debugPrint('❌ Error publishing recipe: $e');
       rethrow;
     }
   }

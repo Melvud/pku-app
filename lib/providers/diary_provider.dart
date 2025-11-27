@@ -12,52 +12,78 @@ class DiaryProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   DateTime _selectedDate = DateTime.now();
-  List<DiaryEntry> _entries = [];
-  List<MealSession> _mealSessions = [];
+
+  // Cache for entries and sessions by date key (yyyy-MM-dd)
+  final Map<String, List<DiaryEntry>> _entriesCache = {};
+  final Map<String, List<MealSession>> _sessionsCache = {};
+
   bool _isLoading = false;
   String? _error;
 
   DateTime get selectedDate => _selectedDate;
-  List<DiaryEntry> get entries => _entries;
-  List<MealSession> get mealSessions => _mealSessions;
+
+  // Get entries for the currently selected date from cache
+  List<DiaryEntry> get entries => getEntriesForDate(_selectedDate);
+
+  // Get meal sessions for the currently selected date from cache
+  List<MealSession> get mealSessions => getMealSessionsForDate(_selectedDate);
+
   bool get isLoading => _isLoading;
   String? get error => _error;
 
   DiaryProvider() {
-    _loadMealSessions();
+    _loadMealSessionsForDate(_selectedDate);
+  }
+
+  String _getDateKey(DateTime date) {
+    return date.toIso8601String().split('T')[0];
+  }
+
+  List<DiaryEntry> getEntriesForDate(DateTime date) {
+    return _entriesCache[_getDateKey(date)] ?? [];
+  }
+
+  List<MealSession> getMealSessionsForDate(DateTime date) {
+    return _sessionsCache[_getDateKey(date)] ?? [];
   }
 
   // Load meal sessions from SharedPreferences for specific date
-  Future<void> _loadMealSessions() async {
+  Future<void> _loadMealSessionsForDate(DateTime date) async {
     try {
-      final dateKey =
-          _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
+      final dateKey = _getDateKey(date);
+
+      // If already in cache, don't reload unless forced?
+      // For now, we'll try to load from prefs to be safe/fresh
+
       final prefs = await SharedPreferences.getInstance();
       final savedSessions = prefs.getString('meal_sessions_$dateKey');
 
+      List<MealSession> sessions;
       if (savedSessions != null) {
         final List<dynamic> decoded = json.decode(savedSessions);
-        _mealSessions = decoded.map((e) => MealSession.fromJson(e)).toList();
+        sessions = decoded.map((e) => MealSession.fromJson(e)).toList();
       } else {
         // Use default meals for this date
-        _mealSessions = MealSession.defaultMealsForDate(_selectedDate);
-        await _saveMealSessions();
+        sessions = MealSession.defaultMealsForDate(date);
+        // We don't await saving here to avoid blocking, but we should save eventually
+        _saveMealSessionsForDate(date, sessions);
       }
+
+      _sessionsCache[dateKey] = sessions;
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading meal sessions: $e');
-      _mealSessions = MealSession.defaultMealsForDate(_selectedDate);
+      _sessionsCache[_getDateKey(date)] = MealSession.defaultMealsForDate(date);
     }
   }
 
   // Save meal sessions to SharedPreferences for specific date
-  Future<void> _saveMealSessions() async {
+  Future<void> _saveMealSessionsForDate(
+      DateTime date, List<MealSession> sessions) async {
     try {
-      final dateKey =
-          _selectedDate.toIso8601String().split('T')[0]; // yyyy-MM-dd
+      final dateKey = _getDateKey(date);
       final prefs = await SharedPreferences.getInstance();
-      final encoded =
-          json.encode(_mealSessions.map((e) => e.toJson()).toList());
+      final encoded = json.encode(sessions.map((e) => e.toJson()).toList());
       await prefs.setString('meal_sessions_$dateKey', encoded);
     } catch (e) {
       debugPrint('Error saving meal sessions: $e');
@@ -75,44 +101,65 @@ class DiaryProvider with ChangeNotifier {
       type: type,
       customName: customName,
       time: time,
-      order: _mealSessions.length,
+      order: mealSessions.length,
       date: _selectedDate,
     );
 
-    _mealSessions.add(newSession);
-    await _saveMealSessions();
+    final dateKey = _getDateKey(_selectedDate);
+    final currentSessions =
+        List<MealSession>.from(_sessionsCache[dateKey] ?? []);
+    currentSessions.add(newSession);
+    _sessionsCache[dateKey] = currentSessions;
+
+    await _saveMealSessionsForDate(_selectedDate, currentSessions);
     notifyListeners();
   }
 
   // Remove meal session
   Future<void> removeMealSession(String sessionId) async {
-    _mealSessions.removeWhere((s) => s.id == sessionId);
+    final dateKey = _getDateKey(_selectedDate);
+    final currentSessions =
+        List<MealSession>.from(_sessionsCache[dateKey] ?? []);
+
+    currentSessions.removeWhere((s) => s.id == sessionId);
     // Reorder
-    for (int i = 0; i < _mealSessions.length; i++) {
-      _mealSessions[i] = _mealSessions[i].copyWith(order: i);
+    for (int i = 0; i < currentSessions.length; i++) {
+      currentSessions[i] = currentSessions[i].copyWith(order: i);
     }
-    await _saveMealSessions();
+
+    _sessionsCache[dateKey] = currentSessions;
+    await _saveMealSessionsForDate(_selectedDate, currentSessions);
     notifyListeners();
   }
 
   // Update meal session time
   Future<void> updateMealSessionTime(String sessionId, DateTime time) async {
-    final index = _mealSessions.indexWhere((s) => s.id == sessionId);
+    final dateKey = _getDateKey(_selectedDate);
+    final currentSessions =
+        List<MealSession>.from(_sessionsCache[dateKey] ?? []);
+
+    final index = currentSessions.indexWhere((s) => s.id == sessionId);
     if (index != -1) {
-      _mealSessions[index] = _mealSessions[index].copyWith(time: time);
-      await _saveMealSessions();
+      currentSessions[index] = currentSessions[index].copyWith(time: time);
+      _sessionsCache[dateKey] = currentSessions;
+      await _saveMealSessionsForDate(_selectedDate, currentSessions);
       notifyListeners();
     }
   }
 
   // Toggle formula checkbox for meal session
   Future<void> toggleMealSessionFormula(String sessionId) async {
-    final index = _mealSessions.indexWhere((s) => s.id == sessionId);
+    final dateKey = _getDateKey(_selectedDate);
+    final currentSessions =
+        List<MealSession>.from(_sessionsCache[dateKey] ?? []);
+
+    final index = currentSessions.indexWhere((s) => s.id == sessionId);
     if (index != -1) {
-      _mealSessions[index] = _mealSessions[index].copyWith(
-        drankFormula: !_mealSessions[index].drankFormula,
+      currentSessions[index] = currentSessions[index].copyWith(
+        drankFormula: !currentSessions[index].drankFormula,
       );
-      await _saveMealSessions();
+      _sessionsCache[dateKey] = currentSessions;
+      await _saveMealSessionsForDate(_selectedDate, currentSessions);
       notifyListeners();
     }
   }
@@ -121,41 +168,69 @@ class DiaryProvider with ChangeNotifier {
   List<DiaryEntry> getEntriesForMealSession(String sessionId) {
     // For now, we'll match by meal type
     // In future, we can add sessionId to DiaryEntry
-    final session = _mealSessions.firstWhere((s) => s.id == sessionId);
-    return _entries.where((entry) => entry.mealType == session.type).toList();
+    final session = mealSessions.firstWhere((s) => s.id == sessionId);
+    return entries.where((entry) => entry.mealType == session.type).toList();
+  }
+
+  // Helper to get entries for a specific session on a specific date (for PageView)
+  List<DiaryEntry> getEntriesForMealSessionOnDate(
+      String sessionId, DateTime date) {
+    final sessions = getMealSessionsForDate(date);
+    final dateEntries = getEntriesForDate(date);
+
+    try {
+      final session = sessions.firstWhere((s) => s.id == sessionId);
+      return dateEntries
+          .where((entry) => entry.mealType == session.type)
+          .toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   // Get entries for specific meal type
   List<DiaryEntry> getEntriesForMeal(MealType mealType) {
-    return _entries.where((entry) => entry.mealType == mealType).toList();
+    return entries.where((entry) => entry.mealType == mealType).toList();
   }
 
   // Calculate total Phe for the selected date
-  double get totalPheToday {
-    return _entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
+  double get totalPheToday => getTotalPheForDate(_selectedDate);
+
+  double getTotalPheForDate(DateTime date) {
+    return getEntriesForDate(date)
+        .fold(0.0, (total, entry) => total + entry.pheInPortion);
   }
 
   // Calculate total protein for the selected date
-  double get totalProteinToday {
-    return _entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
+  double get totalProteinToday => getTotalProteinForDate(_selectedDate);
+
+  double getTotalProteinForDate(DateTime date) {
+    return getEntriesForDate(date)
+        .fold(0.0, (total, entry) => total + entry.proteinInPortion);
   }
 
   // Calculate total calories for the selected date
-  double get totalCaloriesToday {
-    return _entries.fold(
-        0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
+  double get totalCaloriesToday => getTotalCaloriesForDate(_selectedDate);
+
+  double getTotalCaloriesForDate(DateTime date) {
+    return getEntriesForDate(date)
+        .fold(0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
   }
 
   // Calculate total fat for the selected date
-  double get totalFatToday {
-    return _entries.fold(
-        0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
+  double get totalFatToday => getTotalFatForDate(_selectedDate);
+
+  double getTotalFatForDate(DateTime date) {
+    return getEntriesForDate(date)
+        .fold(0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
   }
 
   // Calculate total carbs for the selected date
-  double get totalCarbsToday {
-    return _entries.fold(
-        0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
+  double get totalCarbsToday => getTotalCarbsForDate(_selectedDate);
+
+  double getTotalCarbsForDate(DateTime date) {
+    return getEntriesForDate(date)
+        .fold(0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
   }
 
   // Get statistics for a specific meal
@@ -173,17 +248,28 @@ class DiaryProvider with ChangeNotifier {
   // Set selected date
   void setSelectedDate(DateTime date) {
     _selectedDate = DateTime(date.year, date.month, date.day);
-    _loadMealSessions(); // Load meal sessions for the new date
-    loadEntriesForDate(_selectedDate);
+    // Ensure data is loaded for this date
+    _loadMealSessionsForDate(_selectedDate);
+    if (_entriesCache[_getDateKey(_selectedDate)] == null) {
+      loadEntriesForDate(_selectedDate);
+    }
+    notifyListeners();
   }
 
   // Load entries for specific date
   Future<void> loadEntriesForDate(DateTime date) async {
     if (_auth.currentUser == null) return;
 
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    // Only set loading if we are loading the selected date and it's not cached
+    final isSelectedDate = _getDateKey(date) == _getDateKey(_selectedDate);
+    if (isSelectedDate && _entriesCache[_getDateKey(date)] == null) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
+
+    // Ensure sessions are loaded too
+    await _loadMealSessionsForDate(date);
 
     try {
       final startOfDay = DateTime(date.year, date.month, date.day);
@@ -198,16 +284,26 @@ class DiaryProvider with ChangeNotifier {
           .orderBy('timestamp', descending: false)
           .get();
 
-      _entries =
+      final loadedEntries =
           snapshot.docs.map((doc) => DiaryEntry.fromFirestore(doc)).toList();
 
-      debugPrint('✅ Loaded ${_entries.length} entries for ${date.toLocal()}');
+      _entriesCache[_getDateKey(date)] = loadedEntries;
+
+      debugPrint(
+          '✅ Loaded ${loadedEntries.length} entries for ${date.toLocal()}');
     } catch (e) {
-      _error = 'Ошибка загрузки записей: $e';
+      if (isSelectedDate) {
+        _error = 'Ошибка загрузки записей: $e';
+      }
       debugPrint('❌ Error loading entries: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (isSelectedDate) {
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        // If background loading, just notify to update UI if visible
+        notifyListeners();
+      }
     }
   }
 

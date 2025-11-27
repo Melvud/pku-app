@@ -256,38 +256,59 @@ class BarcodeSheetsService {
 
   String _mapCategory(String category) {
     final lower = category.toLowerCase();
-    if (lower.contains('овощ') || lower.contains('vegetable'))
+    if (lower.contains('овощ') || lower.contains('vegetable')) {
       return 'vegetables';
-    if (lower.contains('фрукт') || lower.contains('fruit')) return 'fruits';
+    }
+    if (lower.contains('фрукт') || lower.contains('fruit')) {
+      return 'fruits';
+    }
     if (lower.contains('зерн') ||
         lower.contains('хлеб') ||
         lower.contains('grain') ||
-        lower.contains('bread')) return 'grains';
-    if (lower.contains('молоч') || lower.contains('dairy')) return 'dairy';
+        lower.contains('bread')) {
+      return 'grains';
+    }
+    if (lower.contains('молоч') || lower.contains('dairy')) {
+      return 'dairy';
+    }
     if (lower.contains('мяс') ||
         lower.contains('meat') ||
         lower.contains('рыб') ||
-        lower.contains('fish')) return 'protein';
+        lower.contains('fish')) {
+      return 'protein';
+    }
     if (lower.contains('напит') ||
         lower.contains('drink') ||
-        lower.contains('beverage')) return 'beverages';
+        lower.contains('beverage')) {
+      return 'beverages';
+    }
     if (lower.contains('сладост') ||
         lower.contains('sweet') ||
-        lower.contains('конфет')) return 'sweets';
+        lower.contains('конфет')) {
+      return 'sweets';
+    }
     return 'other';
   }
 
   double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
+    if (value == null) {
+      return 0.0;
+    }
     final str = value.toString().trim().replaceAll(',', '.');
-    if (str.isEmpty) return 0.0;
+    if (str.isEmpty) {
+      return 0.0;
+    }
     return double.tryParse(str) ?? 0.0;
   }
 
   double? _parseDoubleOrNull(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     final str = value.toString().trim().replaceAll(',', '.');
-    if (str.isEmpty) return null;
+    if (str.isEmpty) {
+      return null;
+    }
     return double.tryParse(str);
   }
 }

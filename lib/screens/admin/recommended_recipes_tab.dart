@@ -18,7 +18,8 @@ class _RecommendedRecipesTabState extends State<RecommendedRecipesTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AdminProvider>(context, listen: false).loadRecommendedRecipes();
+      Provider.of<AdminProvider>(context, listen: false)
+          .loadRecommendedRecipes();
     });
   }
 
@@ -152,12 +153,10 @@ class _RecipeCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           recipe.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                       ),
                       Container(
@@ -300,9 +299,10 @@ class _RecipeCard extends StatelessWidget {
 
                       if (confirm == true && context.mounted) {
                         try {
-                          await Provider.of<AdminProvider>(context, listen: false)
+                          await Provider.of<AdminProvider>(context,
+                                  listen: false)
                               .deleteRecipe(recipe.id);
-                          
+
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -343,6 +343,7 @@ class _RecipeCard extends StatelessWidget {
                           ),
                         ),
                       ).then((_) {
+                        if (!context.mounted) return;
                         // Reload recommended recipes after editing
                         Provider.of<AdminProvider>(context, listen: false)
                             .loadRecommendedRecipes();

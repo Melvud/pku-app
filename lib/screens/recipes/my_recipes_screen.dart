@@ -29,6 +29,8 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
         return Colors.orange;
       case RecipeStatus.rejected:
         return Colors.red;
+      case RecipeStatus.private:
+        return Colors.grey;
     }
   }
 
@@ -40,6 +42,8 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
         return Icons.pending;
       case RecipeStatus.rejected:
         return Icons.cancel;
+      case RecipeStatus.private:
+        return Icons.lock;
     }
   }
 
@@ -185,7 +189,8 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
                             const SizedBox(width: 8),
                             _InfoChip(
                               icon: Icons.medical_information,
-                              label: '${recipe.phePer100g.toStringAsFixed(0)} мг Phe',
+                              label:
+                                  '${recipe.phePer100g.toStringAsFixed(0)} мг Phe',
                               color: Colors.purple,
                             ),
                           ],
@@ -299,8 +304,11 @@ class _MyRecipesScreenState extends State<MyRecipesScreen> {
                                     ),
                                   ),
                                 ).then((_) {
+                                  if (!context.mounted) return;
                                   // Reload recipes after editing
-                                  Provider.of<RecipesProvider>(context, listen: false).loadMyRecipes();
+                                  Provider.of<RecipesProvider>(context,
+                                          listen: false)
+                                      .loadMyRecipes();
                                 });
                               },
                               icon: const Icon(Icons.edit, size: 18),

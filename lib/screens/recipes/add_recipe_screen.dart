@@ -30,8 +30,8 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   final _caloriesController = TextEditingController();
 
   RecipeCategory _selectedCategory = RecipeCategory.snack;
-  List<RecipeIngredient> _ingredients = [];
-  List<RecipeStep> _steps = [];
+  final List<RecipeIngredient> _ingredients = [];
+  final List<RecipeStep> _steps = [];
   Map<int, File> _stepImages = {}; // Map to store step images by index
   bool _isSubmitting = false;
   File? _coverImage;
@@ -182,7 +182,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выбора фото: $e'),
@@ -430,25 +430,71 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         imageUrl: coverImageUrl,
         authorId: user.uid,
         authorName: userProvider.userProfile?.name ?? 'Аноним',
-        status: RecipeStatus.pending,
+        status: RecipeStatus.private,
         createdAt: DateTime.now(),
         isOfficial: false,
       );
 
       await recipesProvider.addRecipe(recipe);
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Рецепт отправлен на проверку!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
+      if (context.mounted) {
+        // Show dialog to ask for publication
+        final shouldPublish = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Рецепт создан!'),
+            content: const Text(
+              'Хотите опубликовать его сейчас? После публикации рецепт будет отправлен на модерацию и станет доступен всем пользователям.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Позже'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Опубликовать'),
+              ),
+            ],
           ),
         );
+
+        if (context.mounted) {
+          if (shouldPublish == true) {
+            try {
+              await recipesProvider.publishRecipe(recipe.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ Рецепт отправлен на модерацию'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Ошибка публикации: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Рецепт сохранен в личные'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
@@ -457,7 +503,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         );
       }
     } finally {
-      if (mounted) {
+      if (context.mounted) {
         setState(() => _isSubmitting = false);
       }
     }
@@ -490,7 +536,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
             IconButton(
               icon: const Icon(Icons.check),
               onPressed: _submitRecipe,
-              tooltip: 'Отправить на проверку',
+              tooltip: 'Сохранить рецепт',
             ),
         ],
       ),
@@ -501,34 +547,34 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info card
-              Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Ваш рецепт будет проверен модераторами и опубликован после одобрения',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              // Info card removed
+              // Card(
+              //   color: Theme.of(context).colorScheme.primaryContainer,
+              //   child: Padding(
+              //     padding: const EdgeInsets.all(16),
+              //     child: Row(
+              //       children: [
+              //         Icon(
+              //           Icons.info_outline,
+              //           color: Theme.of(context).colorScheme.onPrimaryContainer,
+              //         ),
+              //         const SizedBox(width: 12),
+              //         Expanded(
+              //           child: Text(
+              //             'Ваш рецепт будет проверен модераторами и опубликован после одобрения',
+              //             style: TextStyle(
+              //               color: Theme.of(context)
+              //                   .colorScheme
+              //                   .onPrimaryContainer,
+              //               fontSize: 13,
+              //             ),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
+              // const SizedBox(height: 24),
 
               // Basic Info
               Text(
@@ -632,7 +678,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<RecipeCategory>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Категория *',
                 ),
@@ -715,7 +761,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Пожалуйста, внимательно проверяйте данные БЖУ и ФА. От этого зависит здоровье других пользователей.',
+                        'Пожалуйста, внимательно проверяйте данные БЖУ и ФА.',
                         style: TextStyle(
                           color: Colors.orange.shade900,
                           fontSize: 13,

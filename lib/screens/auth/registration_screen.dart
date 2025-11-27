@@ -18,7 +18,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   final _step1FormKey = GlobalKey<FormState>();
   final _step2FormKey = GlobalKey<FormState>();
   final _step3FormKey = GlobalKey<FormState>();
-  
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -26,7 +26,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   final _weightController = TextEditingController();
   final _pheToleranceController = TextEditingController();
   final _customFormulaController = TextEditingController();
-  
+
   DateTime? _selectedDateOfBirth;
   String _selectedFormula = 'PKU Anamix';
   bool _obscurePassword = true;
@@ -82,7 +82,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       cancelText: 'Отмена',
       confirmText: 'Выбрать',
     );
-    
+
     if (picked != null) {
       setState(() => _selectedDateOfBirth = picked);
     }
@@ -91,7 +91,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   int _calculateAge(DateTime birthDate) {
     final now = DateTime.now();
     int age = now.year - birthDate.year;
-    if (now.month < birthDate.month || 
+    if (now.month < birthDate.month ||
         (now.month == birthDate.month && now.day < birthDate.day)) {
       age--;
     }
@@ -112,9 +112,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     }
 
     setState(() => _isLoading = true);
-    
-    final medicalFormula = _selectedFormula == 'Другая' 
-        ? _customFormulaController.text 
+
+    final medicalFormula = _selectedFormula == 'Другая'
+        ? _customFormulaController.text
         : _selectedFormula;
 
     final profile = UserProfile(
@@ -127,7 +127,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     );
 
     final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
-    
+
     final error = await authProvider.register(
       email: _emailController.text,
       password: _passwordController.text,
@@ -267,8 +267,8 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                           icon: Icon(_obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                       validator: (value) {
@@ -294,8 +294,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                           icon: Icon(_obscureConfirmPassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined),
-                          onPressed: () => setState(
-                              () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                          onPressed: () => setState(() =>
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword),
                         ),
                       ),
                       validator: (value) {
@@ -348,7 +349,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Дата рождения
                     InkWell(
                       onTap: _selectDateOfBirth,
@@ -364,7 +365,8 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                             Text(
                               _selectedDateOfBirth == null
                                   ? 'Выберите дату'
-                                  : DateFormat('dd.MM.yyyy').format(_selectedDateOfBirth!),
+                                  : DateFormat('dd.MM.yyyy')
+                                      .format(_selectedDateOfBirth!),
                               style: TextStyle(
                                 fontSize: 16,
                                 color: _selectedDateOfBirth == null
@@ -379,7 +381,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primaryContainer,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -387,7 +391,8 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -396,13 +401,14 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _weightController,
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                       decoration: const InputDecoration(
                         labelText: 'Вес',
@@ -449,7 +455,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onPrimaryContainer,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -469,9 +477,11 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                     ),
                     TextFormField(
                       controller: _pheToleranceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,1}')),
                       ],
                       decoration: const InputDecoration(
                         labelText: 'Суточная толерантность Phe',
@@ -492,10 +502,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Выбор лечебной смеси
                     DropdownButtonFormField<String>(
-                      value: _selectedFormula,
+                      initialValue: _selectedFormula,
                       decoration: const InputDecoration(
                         labelText: 'Какую смесь пьете?',
                         prefixIcon: Icon(Icons.local_drink_outlined),
@@ -511,7 +521,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                         setState(() => _selectedFormula = value!);
                       },
                     ),
-                    
+
                     // Поле для своей смеси если выбрано "Другая"
                     if (_selectedFormula == 'Другая') ...[
                       const SizedBox(height: 16),

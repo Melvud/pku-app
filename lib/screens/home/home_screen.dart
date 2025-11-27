@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/diary_provider.dart';
-import '../../providers/auth_provider.dart';
+
 import '../../models/diary_entry.dart';
 import '../../models/meal_session.dart';
 import '../products/product_selection_screen.dart';
@@ -27,75 +27,523 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String? _error;
+  late PageController _pageController;
+  final int _initialPage = 10000;
+  late DateTime _baseDate;
+
+  late DiaryProvider _diaryProvider;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _baseDate = DateTime.now();
+    _pageController = PageController(initialPage: _initialPage);
+    _diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
+
+    // Sync PageController with initial selected date
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final targetPage = _getIndexFromDate(_diaryProvider.selectedDate);
+      if (targetPage != _initialPage) {
+        _pageController.jumpToPage(targetPage);
+      }
+
+      // Listen for external date changes (e.g. from calendar)
+      _diaryProvider.addListener(_onDiaryDateChanged);
+
+      // Load data after the initial build to avoid setState/notifyListeners during build
+      _loadData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _diaryProvider.removeListener(_onDiaryDateChanged);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onDiaryDateChanged() {
+    if (!context.mounted) return;
+    final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
+    final targetPage = _getIndexFromDate(diaryProvider.selectedDate);
+
+    if (_pageController.hasClients) {
+      final currentPage = _pageController.page?.round() ?? _initialPage;
+      if (currentPage != targetPage) {
+        // Animate if the difference is small (e.g., within a week)
+        // enabling a smooth transition for arrow buttons.
+        // Jump for larger distances (e.g., calendar selection) to avoid
+        // a dizzying fast scroll effect.
+        if ((targetPage - currentPage).abs() <= 7) {
+          _pageController.animateToPage(
+            targetPage,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic, // Smoother curve than easeInOut
+          );
+        } else {
+          _pageController.jumpToPage(targetPage);
+        }
+      }
+    }
+  }
+
+  DateTime _getDateFromIndex(int index) {
+    return _baseDate.add(Duration(days: index - _initialPage));
+  }
+
+  int _getIndexFromDate(DateTime date) {
+    // Adjust for time differences to ensure correct day mapping
+    // We want the difference in calendar days
+    final base = DateTime(_baseDate.year, _baseDate.month, _baseDate.day);
+    final target = DateTime(date.year, date.month, date.day);
+    return _initialPage + target.difference(base).inDays;
   }
 
   Future<void> _loadData() async {
     try {
       // Check if we already have data loaded
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
       final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
-
-      // If we already have profile and diary entries for today, skip loading
-      final hasProfile = userProvider.userProfile != null;
-      final today = DateTime.now();
-      final hasEntries = diaryProvider.selectedDate.year == today.year &&
-          diaryProvider.selectedDate.month == today.month &&
-          diaryProvider.selectedDate.day == today.day;
-
-      if (hasProfile && hasEntries && _isLoading) {
-        // Data already loaded, just update UI state
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-        return;
-      }
-
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      final authProvider =
-          Provider.of<UserAuthProvider>(context, listen: false);
-      final profile = await authProvider.getUserProfile().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('⚠️ Profile loading timeout');
-          return null;
-        },
-      );
-
-      if (profile != null && mounted) {
-        userProvider.updateUserProfile(profile);
-      }
-
-      if (mounted) {
-        await diaryProvider.loadEntriesForDate(DateTime.now()).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () => debugPrint('⚠️ Diary loading timeout'),
-            );
-      }
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading data: $e');
+      // We don't need to force reload if we already have data for today
+      // But we should ensure the view is consistent
+      await diaryProvider.loadEntriesForDate(diaryProvider.selectedDate);
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Ошибка загрузки данных. Проверьте подключение к интернету.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _selectDate() async {
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Загрузка данных...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red.shade300,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _loadData,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Повторить'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: PageView.builder(
+        controller: _pageController,
+        physics: const BouncingScrollPhysics(),
+        allowImplicitScrolling: true,
+        onPageChanged: (index) {
+          final newDate = _getDateFromIndex(index);
+          final diaryProvider =
+              Provider.of<DiaryProvider>(context, listen: false);
+          // Only update if date is different (avoid loops)
+          if (!_isSameDay(diaryProvider.selectedDate, newDate)) {
+            diaryProvider.setSelectedDate(newDate);
+          }
+        },
+        itemBuilder: (context, index) {
+          final date = _getDateFromIndex(index);
+          return _DayView(
+            date: date,
+            onRefresh: () => Provider.of<DiaryProvider>(context, listen: false)
+                .loadEntriesForDate(date),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+}
+
+class _DayView extends StatefulWidget {
+  final DateTime date;
+  final Future<void> Function() onRefresh;
+
+  const _DayView({
+    required this.date,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_DayView> createState() => _DayViewState();
+}
+
+class _DayViewState extends State<_DayView> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger load if needed when view is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
+      // We can check if data is loaded for this date
+      // But loadEntriesForDate in provider already handles checking cache/loading
+      diaryProvider.loadEntriesForDate(widget.date);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<UserProvider, DiaryProvider>(
+      builder: (context, userProvider, diaryProvider, child) {
+        final profile = userProvider.userProfile;
+        final sessions = diaryProvider.getMealSessionsForDate(widget.date);
+
+        // Calculate totals for this specific date
+        final totalPhe = diaryProvider.getTotalPheForDate(widget.date);
+        final totalCalories =
+            diaryProvider.getTotalCaloriesForDate(widget.date);
+        final totalProtein = diaryProvider.getTotalProteinForDate(widget.date);
+        final totalFat = diaryProvider.getTotalFatForDate(widget.date);
+        final totalCarbs = diaryProvider.getTotalCarbsForDate(widget.date);
+
+        return RefreshIndicator(
+          onRefresh: widget.onRefresh,
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 140,
+                floating: false,
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Дневник питания',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              profile != null
+                                  ? 'Привет, ${profile.name}!'
+                                  : 'Добро пожаловать!',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.bar_chart, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StatisticsScreen(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Статистика',
+                  ),
+                ],
+              ),
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () {
+                            final diaryProvider = Provider.of<DiaryProvider>(
+                                context,
+                                listen: false);
+                            final newDate = diaryProvider.selectedDate
+                                .subtract(const Duration(days: 1));
+                            diaryProvider.setSelectedDate(newDate);
+                          },
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _selectDate(context),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 20,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _getDateLabel(widget.date),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () {
+                            final diaryProvider = Provider.of<DiaryProvider>(
+                                context,
+                                listen: false);
+                            final newDate = diaryProvider.selectedDate
+                                .add(const Duration(days: 1));
+                            diaryProvider.setSelectedDate(newDate);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _NutritionOverviewCard(
+                    calories: totalCalories,
+                    protein: totalProtein,
+                    fat: totalFat,
+                    carbs: totalCarbs,
+                    phe: totalPhe,
+                    limitPhe: profile?.dailyTolerancePhe ?? 0,
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index >= sessions.length) {
+                        return null;
+                      }
+                      final session = sessions[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _MealCard(
+                          session: session,
+                          entries: diaryProvider.getEntriesForMealSessionOnDate(
+                              session.id, widget.date),
+                          mealNumber: index + 1,
+                          onAddPressed: () =>
+                              _showAddProductOptions(context, session),
+                          onDeleteEntry: (entryId) =>
+                              diaryProvider.deleteEntry(entryId),
+                          onDeleteMeal: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Удалить прием пищи?'),
+                                content:
+                                    Text('Удалить "${session.displayName}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Отмена'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Удалить'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await diaryProvider.removeMealSession(session.id);
+                            }
+                          },
+                          onEditTime: () => _editMealTime(context, session),
+                          onToggleFormula: () => diaryProvider
+                              .toggleMealSessionFormula(session.id),
+                          onEntryTap: (entry) async {
+                            if (entry.recipeId != null) {
+                              // Fetch recipe and navigate to details
+                              final recipesProvider =
+                                  Provider.of<RecipesProvider>(context,
+                                      listen: false);
+                              Recipe? recipe;
+                              try {
+                                recipe = recipesProvider.recipes
+                                    .firstWhere((r) => r.id == entry.recipeId);
+                              } catch (_) {
+                                try {
+                                  recipe = recipesProvider.myRecipes.firstWhere(
+                                      (r) => r.id == entry.recipeId);
+                                } catch (_) {
+                                  // Not found
+                                }
+                              }
+
+                              if (recipe != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        RecipeDetailScreen(recipe: recipe!),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Рецепт не найден')),
+                                );
+                              }
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      EditDiaryEntryScreen(entry: entry),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      );
+                    },
+                    childCount: sessions.length,
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showAddMealDialog(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Добавить прием пищи'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 80),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _getDateLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) {
+      return 'Сегодня (${DateFormat('d MMM', 'ru').format(date)})';
+    } else if (checkDate == today.subtract(const Duration(days: 1))) {
+      return 'Вчера (${DateFormat('d MMM', 'ru').format(date)})';
+    } else if (checkDate == today.add(const Duration(days: 1))) {
+      return 'Завтра (${DateFormat('d MMM', 'ru').format(date)})';
+    } else {
+      return DateFormat('d MMMM, yyyy', 'ru').format(date);
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
     final diaryProvider = Provider.of<DiaryProvider>(context, listen: false);
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -107,13 +555,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (picked != null) {
       diaryProvider.setSelectedDate(picked);
     }
-  }
-
-  bool _isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
   }
 
   void _showAddProductOptions(BuildContext context, MealSession session) {
@@ -202,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.menu_book, color: Colors.orange),
@@ -253,7 +694,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showAddMealDialog() {
+  void _showAddMealDialog(BuildContext context) {
     final TextEditingController nameController = TextEditingController();
     MealType selectedType = MealType.custom;
     TimeOfDay selectedTime = TimeOfDay.now();
@@ -276,7 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<MealType>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(
                   labelText: 'Тип',
                   border: OutlineInputBorder(),
@@ -334,7 +775,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     time: time,
                   );
 
-                  if (mounted) {
+                  if (context.mounted) {
                     Navigator.pop(context);
                   }
                 }
@@ -347,7 +788,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _editMealTime(MealSession session) async {
+  Future<void> _editMealTime(BuildContext context, MealSession session) async {
     final initialTime = session.time != null
         ? TimeOfDay.fromDateTime(session.time!)
         : TimeOfDay.now();
@@ -357,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
       initialTime: initialTime,
     );
 
-    if (time != null && mounted) {
+    if (time != null && context.mounted) {
       final now = DateTime.now();
       final dateTime = DateTime(
         now.year,
@@ -370,367 +811,6 @@ class _HomeScreenState extends State<HomeScreen> {
       await Provider.of<DiaryProvider>(context, listen: false)
           .updateMealSessionTime(session.id, dateTime);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Загрузка данных...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_error != null) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red.shade300,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _loadData,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Повторить'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: GestureDetector(
-        onHorizontalDragEnd: (details) {
-          final diaryProvider =
-              Provider.of<DiaryProvider>(context, listen: false);
-          if (details.primaryVelocity != null) {
-            if (details.primaryVelocity! < -500) {
-              // Swipe left - next day
-              final newDate =
-                  diaryProvider.selectedDate.add(const Duration(days: 1));
-              diaryProvider.setSelectedDate(newDate);
-            } else if (details.primaryVelocity! > 500) {
-              // Swipe right - previous day
-              final newDate =
-                  diaryProvider.selectedDate.subtract(const Duration(days: 1));
-              diaryProvider.setSelectedDate(newDate);
-            }
-          }
-        },
-        child: Consumer2<UserProvider, DiaryProvider>(
-          builder: (context, userProvider, diaryProvider, child) {
-            final profile = userProvider.userProfile;
-            final sessions = diaryProvider.mealSessions;
-
-            return RefreshIndicator(
-              onRefresh: _loadData,
-              child: CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    expandedHeight: 140,
-                    floating: false,
-                    pinned: true,
-                    elevation: 0,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    flexibleSpace: FlexibleSpaceBar(
-                      background: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Theme.of(context).colorScheme.primary,
-                              Theme.of(context).colorScheme.secondary,
-                            ],
-                          ),
-                        ),
-                        child: SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Дневник питания',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  profile != null
-                                      ? 'Привет, ${profile.name}!'
-                                      : 'Добро пожаловать!',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.bar_chart, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const StatisticsScreen(),
-                            ),
-                          );
-                        },
-                        tooltip: 'Статистика',
-                      ),
-                    ],
-                  ),
-                  SliverToBoxAdapter(
-                    child: Container(
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_left),
-                              onPressed: () {
-                                final newDate = diaryProvider.selectedDate
-                                    .subtract(const Duration(days: 1));
-                                diaryProvider.setSelectedDate(newDate);
-                              },
-                            ),
-                            Expanded(
-                              child: InkWell(
-                                onTap: _selectDate,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                    horizontal: 16,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.calendar_today,
-                                        size: 20,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _isToday(diaryProvider.selectedDate)
-                                            ? 'Сегодня (${DateFormat('d MMM', 'ru').format(diaryProvider.selectedDate)})'
-                                            : DateFormat('d MMMM, yyyy', 'ru')
-                                                .format(
-                                                    diaryProvider.selectedDate),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () {
-                                final newDate = diaryProvider.selectedDate
-                                    .add(const Duration(days: 1));
-                                diaryProvider.setSelectedDate(newDate);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _NutritionOverviewCard(
-                        calories: diaryProvider.totalCaloriesToday,
-                        protein: diaryProvider.totalProteinToday,
-                        fat: diaryProvider.totalFatToday,
-                        carbs: diaryProvider.totalCarbsToday,
-                        phe: diaryProvider.totalPheToday,
-                        limitPhe: profile?.dailyTolerancePhe ?? 0,
-                      ),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index >= sessions.length) {
-                            return null;
-                          }
-                          final session = sessions[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _MealCard(
-                              session: session,
-                              entries: diaryProvider
-                                  .getEntriesForMealSession(session.id),
-                              mealNumber: index + 1,
-                              onAddPressed: () =>
-                                  _showAddProductOptions(context, session),
-                              onDeleteEntry: (entryId) =>
-                                  diaryProvider.deleteEntry(entryId),
-                              onDeleteMeal: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Удалить прием пищи?'),
-                                    content: Text(
-                                        'Удалить "${session.displayName}"?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: const Text('Отмена'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                        child: const Text('Удалить'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirm == true) {
-                                  await diaryProvider
-                                      .removeMealSession(session.id);
-                                }
-                              },
-                              onEditTime: () => _editMealTime(session),
-                              onToggleFormula: () => diaryProvider
-                                  .toggleMealSessionFormula(session.id),
-                              onEntryTap: (entry) async {
-                                if (entry.recipeId != null) {
-                                  // Fetch recipe and navigate to details
-                                  final recipesProvider =
-                                      Provider.of<RecipesProvider>(context,
-                                          listen: false);
-                                  Recipe? recipe;
-                                  try {
-                                    recipe = recipesProvider.recipes.firstWhere(
-                                        (r) => r.id == entry.recipeId);
-                                  } catch (_) {
-                                    try {
-                                      recipe = recipesProvider.myRecipes
-                                          .firstWhere(
-                                              (r) => r.id == entry.recipeId);
-                                    } catch (_) {
-                                      // Not found
-                                    }
-                                  }
-
-                                  if (recipe != null) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            RecipeDetailScreen(recipe: recipe!),
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('Рецепт не найден')),
-                                    );
-                                  }
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          EditDiaryEntryScreen(entry: entry),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          );
-                        },
-                        childCount: sessions.length,
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: OutlinedButton.icon(
-                        onPressed: _showAddMealDialog,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Добавить прием пищи'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 80),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
   }
 }
 

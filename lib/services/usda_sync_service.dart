@@ -6,9 +6,6 @@ import '../models/product.dart';
 import 'usda_service.dart';
 
 class USDASyncService {
-  static const String _spreadsheetId =
-      '1tDEp7KYh0leLhv_AjpkAFKnq-i2_d39Zx3sco1zVlp4';
-  static const String _apiKey = 'AIzaSyCKgDraNgrpEOZCtWF6JoZxJ1FJjaYDMFg';
   static const String _webAppUrl =
       'https://script.google.com/macros/s/AKfycbwUMjuNiNJ0kp-N1_Qr8D6Uhcnc2sbYYHHwy71bO-HKLEpL5wQBQmb8qsk-0Zxr3yY5/exec';
 

@@ -212,7 +212,7 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выбора фото: $e'),
@@ -273,14 +273,16 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
             .updateRecipe(updatedRecipe);
       }
 
-      if (mounted) {
+      if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.recipe.isRecommended
                   ? '✅ Рецепт успешно обновлен!'
-                  : '✅ Рецепт отправлен на модерацию!',
+                  : widget.recipe.status == RecipeStatus.private
+                      ? '✅ Рецепт успешно обновлен!'
+                      : '✅ Рецепт отправлен на модерацию!',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
@@ -288,7 +290,7 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
@@ -297,7 +299,7 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
         );
       }
     } finally {
-      if (mounted) {
+      if (context.mounted) {
         setState(() => _isSubmitting = false);
       }
     }
@@ -338,8 +340,9 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Warning card for non-recommended recipes
-              if (!widget.recipe.isRecommended) ...[
+              // Warning card for non-recommended recipes (only if not private)
+              if (!widget.recipe.isRecommended &&
+                  widget.recipe.status != RecipeStatus.private) ...[
                 Card(
                   color: Colors.orange.shade50,
                   child: Padding(
@@ -502,7 +505,7 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<RecipeCategory>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Категория *',
                   border: OutlineInputBorder(),
@@ -615,57 +618,81 @@ class _EditRecipeScreenState extends State<EditRecipeScreen> {
               ),
               const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _fatController,
-                      decoration: const InputDecoration(
-                        labelText: 'Жиры',
-                        suffixText: 'г/100г',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,1}')),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _carbsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Углеводы',
-                        suffixText: 'г/100г',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,1}')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
               TextFormField(
-                controller: _caloriesController,
-                decoration: const InputDecoration(
-                  labelText: 'Калории',
-                  suffixText: 'ккал/100г',
-                  border: OutlineInputBorder(),
+                controller: _fatController,
+                decoration: InputDecoration(
+                  labelText: widget.isAdmin ? 'Жиры' : 'Жиры *',
+                  suffixText: 'г/100г',
+                  helperText: widget.isAdmin
+                      ? 'Необязательное поле'
+                      : 'Обязательное поле',
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
                 ],
+                validator: widget.isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите жиры';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _carbsController,
+                decoration: InputDecoration(
+                  labelText: widget.isAdmin ? 'Углеводы' : 'Углеводы *',
+                  suffixText: 'г/100г',
+                  helperText: widget.isAdmin
+                      ? 'Необязательное поле'
+                      : 'Обязательное поле',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                ],
+                validator: widget.isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите углеводы';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _caloriesController,
+                decoration: InputDecoration(
+                  labelText: widget.isAdmin ? 'Калории' : 'Калории *',
+                  suffixText: 'ккал/100г',
+                  helperText: widget.isAdmin
+                      ? 'Необязательное поле'
+                      : 'Обязательное поле',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                ],
+                validator: widget.isAdmin
+                    ? null
+                    : (value) {
+                        if (value?.isEmpty ?? true) return 'Введите калории';
+                        final num = double.tryParse(value!);
+                        if (num == null || num < 0) return 'Некорректно';
+                        return null;
+                      },
               ),
               const SizedBox(height: 32),
 

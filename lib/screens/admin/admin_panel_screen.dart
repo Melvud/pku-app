@@ -141,6 +141,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                     builder: (context) => const AddAdminRecipeScreen(),
                   ),
                 ).then((_) {
+                  if (!context.mounted) return;
                   // Refresh recommended recipes after adding new one
                   Provider.of<AdminProvider>(context, listen: false)
                       .loadRecommendedRecipes();

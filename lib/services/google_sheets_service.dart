@@ -127,11 +127,14 @@ class GoogleSheetsService {
   // H: carbs (7)
   // I: energy (8)
   Product? _parseProductRow(List<dynamic> row, int rowIndex) {
-    if (row.isEmpty) return null;
+    if (row.isEmpty) {
+      return null;
+    }
 
     // Safety check for header row if we accidentally fetched it
-    if (row[0].toString() == 'fdc_id' || row[0].toString() == '# fdc_id')
+    if (row[0].toString() == 'fdc_id' || row[0].toString() == '# fdc_id') {
       return null;
+    }
 
     final fdcId = row.isNotEmpty ? row[0].toString().trim() : '';
     final name = row.length > 1 ? row[1].toString().trim() : '';
@@ -178,50 +181,94 @@ class GoogleSheetsService {
   String _mapCategory(String category) {
     final lower = category.toLowerCase().trim();
 
-    if (lower == 'овощи' || lower.contains('vegetable')) return 'vegetables';
-    if (lower == 'фрукты' || lower.contains('fruit')) return 'fruits';
+    if (lower == 'овощи' || lower.contains('vegetable')) {
+      return 'vegetables';
+    }
+    if (lower == 'фрукты' || lower.contains('fruit')) {
+      return 'fruits';
+    }
     if (lower == 'бобовые' ||
         lower.contains('legume') ||
-        lower.contains('bean')) return 'legumes';
+        lower.contains('bean')) {
+      return 'legumes';
+    }
     if (lower == 'орехи и семена' ||
         lower.contains('nut') ||
-        lower.contains('seed')) return 'nuts_seeds';
-    if (lower == 'яйца' || lower.contains('egg')) return 'eggs';
-    if (lower == 'сыры' || lower.contains('cheese')) return 'dairy';
+        lower.contains('seed')) {
+      return 'nuts_seeds';
+    }
+    if (lower == 'яйца' || lower.contains('egg')) {
+      return 'eggs';
+    }
+    if (lower == 'сыры' || lower.contains('cheese')) {
+      return 'dairy';
+    }
     if (lower == 'хлеб и выпечка' ||
         lower.contains('bread') ||
-        lower.contains('bakery')) return 'grains';
+        lower.contains('bakery')) {
+      return 'grains';
+    }
     if (lower == 'молочные продукты' ||
         lower.contains('dairy') ||
-        lower.contains('milk')) return 'dairy';
+        lower.contains('milk')) {
+      return 'dairy';
+    }
     if (lower == 'рыба и морепродукты' ||
         lower.contains('fish') ||
-        lower.contains('seafood')) return 'protein';
+        lower.contains('seafood')) {
+      return 'protein';
+    }
     if (lower == 'крупы и макароны' ||
         lower.contains('grain') ||
         lower.contains('pasta') ||
-        lower.contains('cereal')) return 'grains';
-    if (lower == 'грибы' || lower.contains('mushroom')) return 'vegetables';
-    if (lower == 'ягоды' || lower.contains('berry')) return 'fruits';
+        lower.contains('cereal')) {
+      return 'grains';
+    }
+    if (lower == 'грибы' || lower.contains('mushroom')) {
+      return 'vegetables';
+    }
+    if (lower == 'ягоды' || lower.contains('berry')) {
+      return 'fruits';
+    }
     if (lower == 'сладости' ||
         lower.contains('sweet') ||
-        lower.contains('candy')) return 'snacks';
+        lower.contains('candy')) {
+      return 'snacks';
+    }
 
-    if (lower.contains('овощ')) return 'vegetables';
-    if (lower.contains('фрукт')) return 'fruits';
-    if (lower.contains('зерн') || lower.contains('хлеб')) return 'grains';
-    if (lower.contains('молоч')) return 'dairy';
-    if (lower.contains('мяс') || lower.contains('рыб')) return 'protein';
-    if (lower.contains('напит')) return 'beverages';
-    if (lower.contains('снек') || lower.contains('слад')) return 'snacks';
+    if (lower.contains('овощ')) {
+      return 'vegetables';
+    }
+    if (lower.contains('фрукт')) {
+      return 'fruits';
+    }
+    if (lower.contains('зерн') || lower.contains('хлеб')) {
+      return 'grains';
+    }
+    if (lower.contains('молоч')) {
+      return 'dairy';
+    }
+    if (lower.contains('мяс') || lower.contains('рыб')) {
+      return 'protein';
+    }
+    if (lower.contains('напит')) {
+      return 'beverages';
+    }
+    if (lower.contains('снек') || lower.contains('слад')) {
+      return 'snacks';
+    }
 
     return 'other';
   }
 
   double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
+    if (value == null) {
+      return 0.0;
+    }
     final str = value.toString().trim().replaceAll(',', '.');
-    if (str.isEmpty) return 0.0;
+    if (str.isEmpty) {
+      return 0.0;
+    }
     if (str.startsWith('<')) {
       return 0.0;
     }
@@ -229,9 +276,13 @@ class GoogleSheetsService {
   }
 
   double? _parseDoubleOrNull(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     final str = value.toString().trim().replaceAll(',', '.');
-    if (str.isEmpty) return null;
+    if (str.isEmpty) {
+      return null;
+    }
     if (str.startsWith('<')) {
       return 0.0;
     }

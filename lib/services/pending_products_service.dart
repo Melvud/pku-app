@@ -2,7 +2,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/pending_product.dart';
-import '../models/product.dart';
 
 class PendingProductsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

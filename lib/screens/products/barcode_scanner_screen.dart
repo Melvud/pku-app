@@ -63,7 +63,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       setState(() => _searchStatus = 'Поиск в базе Google Sheets...');
 
       final barcodeSheetsService = BarcodeSheetsService();
-      Product? foundProduct = await barcodeSheetsService.findProductByBarcode(code);
+      Product? foundProduct =
+          await barcodeSheetsService.findProductByBarcode(code);
       String source = 'Google Sheets';
       bool isPheCalculated = false;
 
@@ -99,12 +100,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
         await _controller.start();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка поиска: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка поиска: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -122,7 +125,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               return IconButton(
                 icon: switch (torchState) {
                   TorchState.off => const Icon(Icons.flash_off),
-                  TorchState.on => const Icon(Icons.flash_on, color: Colors.yellow),
+                  TorchState.on =>
+                    const Icon(Icons.flash_on, color: Colors.yellow),
                   TorchState.auto => const Icon(Icons.flash_auto),
                   TorchState.unavailable => const Icon(Icons.no_flash),
                 },

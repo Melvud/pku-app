@@ -812,8 +812,9 @@ class _DailyTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
                 decoration: BoxDecoration(
-                  color:
-                      isToday ? progressColor.withValues(alpha: 0.05) : Colors.white,
+                  color: isToday
+                      ? progressColor.withValues(alpha: 0.05)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isToday ? progressColor : Colors.grey.shade200,

@@ -316,7 +316,9 @@ class _CategoryChip extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: isSelected ? Colors.transparent : Colors.grey[300]!,
+              color: isSelected
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.grey[300]!,
               width: 1,
             )),
         onPressed: onTap,

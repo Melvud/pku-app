@@ -17,7 +17,8 @@ enum RecipeCategory {
 enum RecipeStatus {
   approved('Одобрен'),
   pending('На проверке'),
-  rejected('Отклонен');
+  rejected('Отклонен'),
+  private('Личный');
 
   final String displayName;
   const RecipeStatus(this.displayName);
