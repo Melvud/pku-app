@@ -72,6 +72,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Панель администратора'),
+        actions: [
+          if (_tabController.index == 2)
+            IconButton(
+              icon: const Icon(Icons.cloud_upload),
+              tooltip: 'Загрузить рецепты из JSON',
+              onPressed: _loadRecipesFromJSON,
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Theme.of(context).colorScheme.primary,
@@ -143,6 +151,108 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               backgroundColor: Colors.amber.shade700,
             )
           : null,
+    );
+  }
+
+  Future<void> _loadRecipesFromJSON() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Загрузка рецептов'),
+        content: const Text(
+            'Вы уверены, что хотите загрузить рецепты из JSON файла? Это может занять некоторое время.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Загрузить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _LoadingDialog(),
+    );
+  }
+}
+
+class _LoadingDialog extends StatefulWidget {
+  const _LoadingDialog();
+
+  @override
+  State<_LoadingDialog> createState() => _LoadingDialogState();
+}
+
+class _LoadingDialogState extends State<_LoadingDialog> {
+  String _status = 'Подготовка...';
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startLoading();
+  }
+
+  Future<void> _startLoading() async {
+    try {
+      final provider = Provider.of<AdminProvider>(context, listen: false);
+      await provider.loadRecipesFromJSON(
+        onProgress: (status, progress) {
+          if (mounted) {
+            setState(() {
+              _status = status;
+              _progress = progress;
+            });
+          }
+        },
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Рецепты успешно загружены'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Загрузка рецептов'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_status),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(value: _progress),
+          const SizedBox(height: 8),
+          Text('${(_progress * 100).toInt()}%'),
+        ],
+      ),
     );
   }
 }

@@ -95,7 +95,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
-  Future<void> _toggleLike() async {
+  Future<void> _toggleFavorite() async {
     final recipesProvider =
         Provider.of<RecipesProvider>(context, listen: false);
 
@@ -103,17 +103,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     final currentRecipe = recipesProvider.recipes.firstWhere(
         (r) => r.id == widget.recipe.id,
         orElse: () => widget.recipe);
-    final isLiked = currentRecipe.likedBy.contains(
+    final isSaved = currentRecipe.savedBy.contains(
       FirebaseAuth.instance.currentUser?.uid ?? '',
     );
 
     try {
-      await recipesProvider.toggleLike(widget.recipe.id);
+      await recipesProvider.toggleFavorite(widget.recipe.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isLiked
+            content: Text(isSaved
                 ? 'Рецепт удален из избранного'
                 : 'Рецепт добавлен в избранное'),
             behavior: SnackBarBehavior.floating,
@@ -121,6 +121,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final recipesProvider =
+        Provider.of<RecipesProvider>(context, listen: false);
+    try {
+      await recipesProvider.toggleLike(widget.recipe.id);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -208,7 +226,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withValues(alpha: 0.7),
+                                Colors.black.withOpacity(0.7),
                               ],
                             ),
                           ),
@@ -243,7 +261,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
+                          color: color.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -363,8 +381,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor:
-                                        color.withValues(alpha: 0.2),
+                                    backgroundColor: color.withOpacity(0.2),
                                     radius: 20,
                                     child: Icon(Icons.person,
                                         color: color, size: 20),
@@ -592,7 +609,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.15),
+                              color: color.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -672,7 +689,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           const SizedBox(height: 12),
 
                           // Step photo if available
-                          if (step.imageUrl != null) ...[
+                          if (step.imageUrl != null &&
+                              step.imageUrl!.isNotEmpty) ...[
                             GestureDetector(
                               onTap: () {
                                 _showFullImage(context, step.imageUrl!);
@@ -739,7 +757,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             }
                           }
 
-                          final isLiked = currentRecipe.likedBy.contains(
+                          final isSaved = currentRecipe.savedBy.contains(
                             FirebaseAuth.instance.currentUser?.uid ?? '',
                           );
 
@@ -747,24 +765,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             onPressed:
                                 widget.recipe.status == RecipeStatus.rejected
                                     ? null
-                                    : _toggleLike,
+                                    : _toggleFavorite,
                             icon: Icon(
-                              isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: isLiked ? Colors.red : color,
+                              isSaved ? Icons.bookmark : Icons.bookmark_border,
+                              color: isSaved ? Colors.red : color,
                             ),
                             label: Text(
-                              isLiked
+                              isSaved
                                   ? 'Убрать из избранного'
                                   : 'Добавить в избранное',
                               style: TextStyle(
-                                color: isLiked ? Colors.red : color,
+                                color: isSaved ? Colors.red : color,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               side: BorderSide(
-                                color: isLiked ? Colors.red : color,
+                                color: isSaved ? Colors.red : color,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),

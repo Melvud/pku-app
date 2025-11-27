@@ -159,6 +159,7 @@ class RecipesProvider with ChangeNotifier {
       isOfficial: map['isOfficial'] ?? false,
       likesCount: map['likesCount'] ?? 0,
       likedBy: (map['likedBy'] as List<dynamic>?)?.cast<String>() ?? [],
+      savedBy: (map['savedBy'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 
@@ -376,6 +377,65 @@ class RecipesProvider with ChangeNotifier {
       debugPrint('✅ Toggled like on recipe $recipeId');
     } catch (e) {
       debugPrint('❌ Error toggling like: $e');
+      // Revert on error (reload)
+      await loadApprovedRecipes();
+      await loadMyRecipes();
+      rethrow;
+    }
+  }
+
+  // Toggle favorite on a recipe
+  Future<void> toggleFavorite(String recipeId) async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      final userId = _auth.currentUser!.uid;
+      final recipeRef = _firestore.collection('recipes').doc(recipeId);
+      final doc = await recipeRef.get();
+
+      if (!doc.exists) return;
+
+      final recipe = Recipe.fromFirestore(doc);
+      final isSaved = recipe.savedBy.contains(userId);
+
+      // Optimistic update
+      final updatedSavedBy = List<String>.from(recipe.savedBy);
+
+      if (isSaved) {
+        updatedSavedBy.remove(userId);
+      } else {
+        updatedSavedBy.add(userId);
+      }
+
+      // Update local lists immediately
+      void updateList(List<Recipe> list) {
+        final index = list.indexWhere((r) => r.id == recipeId);
+        if (index != -1) {
+          list[index] = list[index].copyWith(
+            savedBy: updatedSavedBy,
+          );
+        }
+      }
+
+      updateList(_recipes);
+      updateList(_myRecipes);
+      notifyListeners();
+
+      if (isSaved) {
+        // Unsave
+        await recipeRef.update({
+          'savedBy': FieldValue.arrayRemove([userId]),
+        });
+      } else {
+        // Save
+        await recipeRef.update({
+          'savedBy': FieldValue.arrayUnion([userId]),
+        });
+      }
+
+      debugPrint('✅ Toggled favorite on recipe $recipeId');
+    } catch (e) {
+      debugPrint('❌ Error toggling favorite: $e');
       // Revert on error (reload)
       await loadApprovedRecipes();
       await loadMyRecipes();

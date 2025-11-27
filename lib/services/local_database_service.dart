@@ -27,7 +27,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -74,6 +74,7 @@ class LocalDatabaseService {
         isOfficial INTEGER DEFAULT 0,
         likesCount INTEGER DEFAULT 0,
         likedBy TEXT,
+        savedBy TEXT,
         createdAt INTEGER NOT NULL,
         approvedAt INTEGER,
         rejectionReason TEXT,
@@ -161,6 +162,12 @@ class LocalDatabaseService {
             'ALTER TABLE products ADD COLUMN isUserCreated INTEGER DEFAULT 0');
       } catch (_) {}
     }
+    if (oldVersion < 4) {
+      // Add savedBy column for version 4
+      try {
+        await db.execute('ALTER TABLE recipes ADD COLUMN savedBy TEXT');
+      } catch (_) {}
+    }
   }
 
   // Helper method to convert Timestamp/DateTime/int to milliseconds
@@ -239,6 +246,8 @@ class LocalDatabaseService {
           'likesCount': recipe['likesCount'] ?? 0,
           'likedBy':
               recipe['likedBy'] != null ? jsonEncode(recipe['likedBy']) : null,
+          'savedBy':
+              recipe['savedBy'] != null ? jsonEncode(recipe['savedBy']) : null,
           'createdAt': _timestampToMillis(recipe['createdAt']),
           'approvedAt': recipe['approvedAt'] != null
               ? _timestampToMillis(recipe['approvedAt'])
@@ -271,6 +280,11 @@ class LocalDatabaseService {
         decoded['likedBy'] = jsonDecode(map['likedBy'] as String);
       } else {
         decoded['likedBy'] = <String>[];
+      }
+      if (map['savedBy'] != null) {
+        decoded['savedBy'] = jsonDecode(map['savedBy'] as String);
+      } else {
+        decoded['savedBy'] = <String>[];
       }
       return decoded;
     }).toList();

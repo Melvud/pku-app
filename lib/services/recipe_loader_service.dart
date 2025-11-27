@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/recipe.dart';
+import 'local_database_service.dart';
 
 class RecipeLoaderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,9 +22,11 @@ class RecipeLoaderService {
   String get _githubToken => dotenv.env['GITHUB_TOKEN'] ?? '';
 
   // Load recipes from GitHub
-  Future<void> loadRecipes() async {
+  Future<void> loadRecipes(
+      {Function(String status, double progress)? onProgress}) async {
     try {
       debugPrint('🔄 Fetching recipes from GitHub...');
+      onProgress?.call('Загрузка файла с GitHub...', 0.0);
 
       final url = Uri.parse(
           'https://raw.githubusercontent.com/$_githubOwner/$_githubRepo/$_githubBranch/$_githubPath');
@@ -47,8 +50,13 @@ class RecipeLoaderService {
       int addedCount = 0;
       int updatedCount = 0;
       int skippedCount = 0;
+      int totalItems = jsonList.length;
 
-      for (final recipeJson in jsonList) {
+      for (int i = 0; i < totalItems; i++) {
+        final recipeJson = jsonList[i];
+        final double progress = (i / totalItems);
+        onProgress?.call(
+            'Обработка рецепта ${i + 1} из $totalItems...', progress);
         if (recipeJson is! Map<String, dynamic>) continue;
 
         // Skip documentation or metadata keys
@@ -154,6 +162,13 @@ class RecipeLoaderService {
 
       debugPrint(
           '🏁 Recipe loading complete. Added: $addedCount, Updated: $updatedCount, Skipped: $skippedCount');
+
+      if (addedCount > 0 || updatedCount > 0) {
+        // Clear local cache to force refresh in UI
+        debugPrint(
+            '🧹 Clearing local recipe cache to ensure updates are visible...');
+        await LocalDatabaseService().clearTable('recipes');
+      }
     } catch (e) {
       debugPrint('❌ Error in RecipeLoaderService: $e');
     }

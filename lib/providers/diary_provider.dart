@@ -407,8 +407,26 @@ class DiaryProvider with ChangeNotifier {
 
       // Calculate daily stats
       final List<Map<String, dynamic>> dailyStats = [];
+      final now = DateTime.now();
+
       for (int day = 1; day <= endOfMonth.day; day++) {
         final dayEntries = dailyEntries[day] ?? [];
+        final date = DateTime(year, month, day);
+
+        // Skip future days in stats
+        if (date.isAfter(now)) {
+          dailyStats.add({
+            'day': day,
+            'phe': 0.0,
+            'protein': 0.0,
+            'fat': 0.0,
+            'carbs': 0.0,
+            'calories': 0.0,
+            'entriesCount': 0,
+          });
+          continue;
+        }
+
         dailyStats.add({
           'day': day,
           'phe': dayEntries.fold(0.0, (total, e) => total + e.pheInPortion),
@@ -424,15 +442,19 @@ class DiaryProvider with ChangeNotifier {
         });
       }
 
+      // Filter entries for total stats - exclude future entries
+      final pastEntries =
+          entries.where((e) => !e.timestamp.isAfter(now)).toList();
+
       final totalPhe =
-          entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
-      final totalProtein =
-          entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
-      final totalFat = entries.fold(
+          pastEntries.fold(0.0, (total, entry) => total + entry.pheInPortion);
+      final totalProtein = pastEntries.fold(
+          0.0, (total, entry) => total + entry.proteinInPortion);
+      final totalFat = pastEntries.fold(
           0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
-      final totalCarbs = entries.fold(
+      final totalCarbs = pastEntries.fold(
           0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
-      final totalCalories = entries.fold(
+      final totalCalories = pastEntries.fold(
           0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
       final daysCount = endOfMonth.day;
       final activeDays = dailyEntries.length;
@@ -498,38 +520,68 @@ class DiaryProvider with ChangeNotifier {
       // Calculate daily stats
       final List<Map<String, dynamic>> dailyStats = [];
       DateTime current = start;
+      final now = DateTime.now();
+
       while (current.isBefore(end) || current.isAtSameMomentAs(end)) {
         final dateKey =
             '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
         final dayEntries = dailyEntries[dateKey] ?? [];
 
-        dailyStats.add({
-          'date': current,
-          'day': current.day,
-          'month': current.month,
-          'year': current.year,
-          'phe': dayEntries.fold(0.0, (total, e) => total + e.pheInPortion),
-          'protein':
-              dayEntries.fold(0.0, (total, e) => total + e.proteinInPortion),
-          'fat':
-              dayEntries.fold(0.0, (total, e) => total + (e.fatInPortion ?? 0)),
-          'carbs': dayEntries.fold(
-              0.0, (total, e) => total + (e.carbsInPortion ?? 0)),
-          'calories': dayEntries.fold(
-              0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
-          'entriesCount': dayEntries.length,
-        });
+        // Skip future days in stats
+        if (current.isAfter(now)) {
+          dailyStats.add({
+            'date': current,
+            'day': current.day,
+            'month': current.month,
+            'year': current.year,
+            'phe': 0.0,
+            'protein': 0.0,
+            'fat': 0.0,
+            'carbs': 0.0,
+            'calories': 0.0,
+            'entriesCount': 0,
+          });
+        } else {
+          dailyStats.add({
+            'date': current,
+            'day': current.day,
+            'month': current.month,
+            'year': current.year,
+            'phe': dayEntries.fold(0.0, (total, e) => total + e.pheInPortion),
+            'protein':
+                dayEntries.fold(0.0, (total, e) => total + e.proteinInPortion),
+            'fat': dayEntries.fold(
+                0.0, (total, e) => total + (e.fatInPortion ?? 0)),
+            'carbs': dayEntries.fold(
+                0.0, (total, e) => total + (e.carbsInPortion ?? 0)),
+            'calories': dayEntries.fold(
+                0.0, (total, e) => total + (e.caloriesInPortion ?? 0)),
+            'entriesCount': dayEntries.length,
+          });
+        }
 
         current = current.add(const Duration(days: 1));
       }
 
+      // Filter entries for total stats - exclude future entries
+      final pastEntries =
+          entries.where((e) => !e.timestamp.isAfter(now)).toList();
+      final pastMonthlyEntries = <String, List<DiaryEntry>>{};
+
+      for (var entry in pastEntries) {
+        final monthKey =
+            '${entry.timestamp.year}-${entry.timestamp.month.toString().padLeft(2, '0')}';
+        pastMonthlyEntries.putIfAbsent(monthKey, () => []);
+        pastMonthlyEntries[monthKey]!.add(entry);
+      }
+
       // Calculate monthly stats
       final List<Map<String, dynamic>> monthlyStats = [];
-      for (var monthKey in monthlyEntries.keys.toList()..sort()) {
+      for (var monthKey in pastMonthlyEntries.keys.toList()..sort()) {
         final parts = monthKey.split('-');
         final year = int.parse(parts[0]);
         final month = int.parse(parts[1]);
-        final monthEntriesData = monthlyEntries[monthKey]!;
+        final monthEntriesData = pastMonthlyEntries[monthKey]!;
 
         final daysInMonth = DateTime(year, month + 1, 0).day;
 
@@ -554,14 +606,14 @@ class DiaryProvider with ChangeNotifier {
       }
 
       final totalPhe =
-          entries.fold(0.0, (total, entry) => total + entry.pheInPortion);
-      final totalProtein =
-          entries.fold(0.0, (total, entry) => total + entry.proteinInPortion);
-      final totalFat = entries.fold(
+          pastEntries.fold(0.0, (total, entry) => total + entry.pheInPortion);
+      final totalProtein = pastEntries.fold(
+          0.0, (total, entry) => total + entry.proteinInPortion);
+      final totalFat = pastEntries.fold(
           0.0, (total, entry) => total + (entry.fatInPortion ?? 0));
-      final totalCarbs = entries.fold(
+      final totalCarbs = pastEntries.fold(
           0.0, (total, entry) => total + (entry.carbsInPortion ?? 0));
-      final totalCalories = entries.fold(
+      final totalCalories = pastEntries.fold(
           0.0, (total, entry) => total + (entry.caloriesInPortion ?? 0));
       final daysDifference = end.difference(start).inDays + 1;
       final activeDays = dailyEntries.length;

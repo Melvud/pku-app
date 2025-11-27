@@ -73,6 +73,7 @@ class Recipe {
   final bool isRecommended; // Рекомендованный рецепт (из админ панели)
   final int likesCount; // Number of likes
   final List<String> likedBy; // User IDs who liked this recipe
+  final List<String> savedBy; // User IDs who saved this recipe (Favorites)
 
   Recipe({
     required this.id,
@@ -100,8 +101,9 @@ class Recipe {
     this.isRecommended = false,
     this.likesCount = 0,
     this.likedBy = const [],
+    this.savedBy = const [],
   });
-  
+
   // Helper to get steps (either new format or old)
   List<RecipeStep> get recipeSteps {
     if (steps != null && steps!.isNotEmpty) {
@@ -138,6 +140,7 @@ class Recipe {
     bool? isRecommended,
     int? likesCount,
     List<String>? likedBy,
+    List<String>? savedBy,
   }) {
     return Recipe(
       id: id ?? this.id,
@@ -165,6 +168,7 @@ class Recipe {
       isRecommended: isRecommended ?? this.isRecommended,
       likesCount: likesCount ?? this.likesCount,
       likedBy: likedBy ?? this.likedBy,
+      savedBy: savedBy ?? this.savedBy,
     );
   }
 
@@ -194,6 +198,7 @@ class Recipe {
       'isRecommended': isRecommended,
       'likesCount': likesCount,
       'likedBy': likedBy,
+      'savedBy': savedBy,
     };
   }
 
@@ -211,10 +216,11 @@ class Recipe {
               ?.map((i) => RecipeIngredient.fromMap(i as Map<String, dynamic>))
               .toList() ??
           [],
-      instructions: (data['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+      instructions:
+          (data['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
       steps: (data['steps'] as List<dynamic>?)
-              ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
-              .toList(),
+          ?.map((s) => RecipeStep.fromMap(s as Map<String, dynamic>))
+          .toList(),
       servings: data['servings'] ?? 1,
       cookingTimeMinutes: data['cookingTimeMinutes'] ?? 0,
       phePer100g: (data['phePer100g'] ?? 0).toDouble(),
@@ -236,6 +242,7 @@ class Recipe {
       isRecommended: data['isRecommended'] ?? false,
       likesCount: data['likesCount'] ?? 0,
       likedBy: (data['likedBy'] as List<dynamic>?)?.cast<String>() ?? [],
+      savedBy: (data['savedBy'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 }

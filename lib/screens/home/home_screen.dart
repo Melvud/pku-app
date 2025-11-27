@@ -422,297 +422,313 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      body: Consumer2<UserProvider, DiaryProvider>(
-        builder: (context, userProvider, diaryProvider, child) {
-          final profile = userProvider.userProfile;
-          final sessions = diaryProvider.mealSessions;
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final diaryProvider =
+              Provider.of<DiaryProvider>(context, listen: false);
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! < -500) {
+              // Swipe left - next day
+              final newDate =
+                  diaryProvider.selectedDate.add(const Duration(days: 1));
+              diaryProvider.setSelectedDate(newDate);
+            } else if (details.primaryVelocity! > 500) {
+              // Swipe right - previous day
+              final newDate =
+                  diaryProvider.selectedDate.subtract(const Duration(days: 1));
+              diaryProvider.setSelectedDate(newDate);
+            }
+          }
+        },
+        child: Consumer2<UserProvider, DiaryProvider>(
+          builder: (context, userProvider, diaryProvider, child) {
+            final profile = userProvider.userProfile;
+            final sessions = diaryProvider.mealSessions;
 
-          return RefreshIndicator(
-            onRefresh: _loadData,
-            child: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  expandedHeight: 140,
-                  floating: false,
-                  pinned: true,
-                  elevation: 0,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.secondary,
-                          ],
-                        ),
-                      ),
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Дневник питания',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                profile != null
-                                    ? 'Привет, ${profile.name}!'
-                                    : 'Добро пожаловать!',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
+            return RefreshIndicator(
+              onRefresh: _loadData,
+              child: CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    expandedHeight: 140,
+                    floating: false,
+                    pinned: true,
+                    elevation: 0,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.secondary,
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.bar_chart, color: Colors.white),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StatisticsScreen(),
-                          ),
-                        );
-                      },
-                      tooltip: 'Статистика',
-                    ),
-                  ],
-                ),
-                SliverToBoxAdapter(
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left),
-                            onPressed: () {
-                              final newDate = diaryProvider.selectedDate
-                                  .subtract(const Duration(days: 1));
-                              diaryProvider.setSelectedDate(newDate);
-                            },
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              onTap: _selectDate,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 16,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Дневник питания',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today,
-                                      size: 20,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _isToday(diaryProvider.selectedDate)
-                                          ? 'Сегодня (${DateFormat('d MMM', 'ru').format(diaryProvider.selectedDate)})'
-                                          : DateFormat('d MMMM, yyyy', 'ru')
-                                              .format(
-                                                  diaryProvider.selectedDate),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  profile != null
+                                      ? 'Привет, ${profile.name}!'
+                                      : 'Добро пожаловать!',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right),
-                            onPressed: _isToday(diaryProvider.selectedDate)
-                                ? null
-                                : () {
-                                    final newDate = diaryProvider.selectedDate
-                                        .add(const Duration(days: 1));
-                                    if (!newDate.isAfter(DateTime.now())) {
-                                      diaryProvider.setSelectedDate(newDate);
-                                    }
-                                  },
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.bar_chart, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const StatisticsScreen(),
+                            ),
+                          );
+                        },
+                        tooltip: 'Статистика',
+                      ),
+                    ],
+                  ),
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _NutritionOverviewCard(
-                      calories: diaryProvider.totalCaloriesToday,
-                      protein: diaryProvider.totalProteinToday,
-                      fat: diaryProvider.totalFatToday,
-                      carbs: diaryProvider.totalCarbsToday,
-                      phe: diaryProvider.totalPheToday,
-                      limitPhe: profile?.dailyTolerancePhe ?? 0,
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index >= sessions.length) {
-                          return null;
-                        }
-                        final session = sessions[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _MealCard(
-                            session: session,
-                            entries: diaryProvider
-                                .getEntriesForMealSession(session.id),
-                            mealNumber: index + 1,
-                            onAddPressed: () =>
-                                _showAddProductOptions(context, session),
-                            onDeleteEntry: (entryId) =>
-                                diaryProvider.deleteEntry(entryId),
-                            onDeleteMeal: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Удалить прием пищи?'),
-                                  content:
-                                      Text('Удалить "${session.displayName}"?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Отмена'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left),
+                              onPressed: () {
+                                final newDate = diaryProvider.selectedDate
+                                    .subtract(const Duration(days: 1));
+                                diaryProvider.setSelectedDate(newDate);
+                              },
+                            ),
+                            Expanded(
+                              child: InkWell(
+                                onTap: _selectDate,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 16,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 20,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
                                       ),
-                                      child: const Text('Удалить'),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _isToday(diaryProvider.selectedDate)
+                                            ? 'Сегодня (${DateFormat('d MMM', 'ru').format(diaryProvider.selectedDate)})'
+                                            : DateFormat('d MMMM, yyyy', 'ru')
+                                                .format(
+                                                    diaryProvider.selectedDate),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              );
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () {
+                                final newDate = diaryProvider.selectedDate
+                                    .add(const Duration(days: 1));
+                                diaryProvider.setSelectedDate(newDate);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _NutritionOverviewCard(
+                        calories: diaryProvider.totalCaloriesToday,
+                        protein: diaryProvider.totalProteinToday,
+                        fat: diaryProvider.totalFatToday,
+                        carbs: diaryProvider.totalCarbsToday,
+                        phe: diaryProvider.totalPheToday,
+                        limitPhe: profile?.dailyTolerancePhe ?? 0,
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index >= sessions.length) {
+                            return null;
+                          }
+                          final session = sessions[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _MealCard(
+                              session: session,
+                              entries: diaryProvider
+                                  .getEntriesForMealSession(session.id),
+                              mealNumber: index + 1,
+                              onAddPressed: () =>
+                                  _showAddProductOptions(context, session),
+                              onDeleteEntry: (entryId) =>
+                                  diaryProvider.deleteEntry(entryId),
+                              onDeleteMeal: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Удалить прием пищи?'),
+                                    content: Text(
+                                        'Удалить "${session.displayName}"?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Отмена'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                        child: const Text('Удалить'),
+                                      ),
+                                    ],
+                                  ),
+                                );
 
-                              if (confirm == true) {
-                                await diaryProvider
-                                    .removeMealSession(session.id);
-                              }
-                            },
-                            onEditTime: () => _editMealTime(session),
-                            onToggleFormula: () => diaryProvider
-                                .toggleMealSessionFormula(session.id),
-                            onEntryTap: (entry) async {
-                              if (entry.recipeId != null) {
-                                // Fetch recipe and navigate to details
-                                final recipesProvider =
-                                    Provider.of<RecipesProvider>(context,
-                                        listen: false);
-                                Recipe? recipe;
-                                try {
-                                  recipe = recipesProvider.recipes.firstWhere(
-                                      (r) => r.id == entry.recipeId);
-                                } catch (_) {
-                                  try {
-                                    recipe = recipesProvider.myRecipes
-                                        .firstWhere(
-                                            (r) => r.id == entry.recipeId);
-                                  } catch (_) {
-                                    // Not found
-                                  }
+                                if (confirm == true) {
+                                  await diaryProvider
+                                      .removeMealSession(session.id);
                                 }
+                              },
+                              onEditTime: () => _editMealTime(session),
+                              onToggleFormula: () => diaryProvider
+                                  .toggleMealSessionFormula(session.id),
+                              onEntryTap: (entry) async {
+                                if (entry.recipeId != null) {
+                                  // Fetch recipe and navigate to details
+                                  final recipesProvider =
+                                      Provider.of<RecipesProvider>(context,
+                                          listen: false);
+                                  Recipe? recipe;
+                                  try {
+                                    recipe = recipesProvider.recipes.firstWhere(
+                                        (r) => r.id == entry.recipeId);
+                                  } catch (_) {
+                                    try {
+                                      recipe = recipesProvider.myRecipes
+                                          .firstWhere(
+                                              (r) => r.id == entry.recipeId);
+                                    } catch (_) {
+                                      // Not found
+                                    }
+                                  }
 
-                                if (recipe != null) {
+                                  if (recipe != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            RecipeDetailScreen(recipe: recipe!),
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Рецепт не найден')),
+                                    );
+                                  }
+                                } else {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          RecipeDetailScreen(recipe: recipe!),
+                                          EditDiaryEntryScreen(entry: entry),
                                     ),
                                   );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Рецепт не найден')),
-                                  );
                                 }
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        EditDiaryEntryScreen(entry: entry),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        );
-                      },
-                      childCount: sessions.length,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: OutlinedButton.icon(
-                      onPressed: _showAddMealDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Добавить прием пищи'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                              },
+                            ),
+                          );
+                        },
+                        childCount: sessions.length,
                       ),
                     ),
                   ),
-                ),
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 80),
-                ),
-              ],
-            ),
-          );
-        },
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: OutlinedButton.icon(
+                        onPressed: _showAddMealDialog,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Добавить прием пищи'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 80),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

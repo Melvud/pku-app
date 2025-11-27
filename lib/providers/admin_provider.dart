@@ -7,12 +7,15 @@ import '../models/recipe_comment.dart';
 import '../models/pending_product.dart';
 import '../services/local_database_service.dart';
 import '../services/pending_products_service.dart';
+import '../services/recipe_loader_service.dart';
 
 class AdminProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDatabaseService _localDb = LocalDatabaseService();
-  final PendingProductsService _pendingProductsService = PendingProductsService();
+  final PendingProductsService _pendingProductsService =
+      PendingProductsService();
+  final RecipeLoaderService _recipeLoader = RecipeLoaderService();
 
   bool _isAdmin = false;
   bool get isAdmin => _isAdmin;
@@ -61,10 +64,8 @@ class AdminProvider with ChangeNotifier {
         return;
       }
 
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
+      final userDoc =
+          await _firestore.collection('users').doc(currentUser.uid).get();
 
       if (userDoc.exists && userDoc.data() != null) {
         _isAdmin = userDoc.data()!['isAdmin'] ?? false;
@@ -89,9 +90,8 @@ class AdminProvider with ChangeNotifier {
           .orderBy('createdAt', descending: true)
           .get();
 
-      _pendingRecipes = snapshot.docs
-          .map((doc) => Recipe.fromFirestore(doc))
-          .toList();
+      _pendingRecipes =
+          snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
     } catch (e) {
       debugPrint('Error loading pending recipes: $e');
       _pendingRecipes = [];
@@ -110,10 +110,10 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingRecipes.removeWhere((r) => r.id == recipeId);
-      
+
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error approving recipe: $e');
@@ -130,10 +130,10 @@ class AdminProvider with ChangeNotifier {
       });
 
       _pendingRecipes.removeWhere((r) => r.id == recipeId);
-      
+
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error rejecting recipe: $e');
@@ -172,10 +172,9 @@ class AdminProvider with ChangeNotifier {
           .orderBy('createdAt', descending: true)
           .get();
 
-      _recommendedRecipes = snapshot.docs
-          .map((doc) => Recipe.fromFirestore(doc))
-          .toList();
-      
+      _recommendedRecipes =
+          snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading recommended recipes: $e');
@@ -215,6 +214,11 @@ class AdminProvider with ChangeNotifier {
   // Delete a recipe
   Future<void> deleteRecipe(String recipeId) async {
     try {
+      // Get recipe name before deleting to remove from GitHub
+      final recipeDoc =
+          await _firestore.collection('recipes').doc(recipeId).get();
+      final recipeName = recipeDoc.data()?['name'] as String?;
+
       await _firestore.collection('recipes').doc(recipeId).delete();
 
       // Remove from local lists
@@ -223,6 +227,14 @@ class AdminProvider with ChangeNotifier {
 
       // Clear recipes cache to force refresh on next load
       await _localDb.clearTable('recipes');
+
+      // Sync with GitHub
+      if (recipeName != null) {
+        // Delete images from Storage
+        await _recipeLoader.deleteRecipeImages(recipeName);
+        // Delete from GitHub JSON
+        await _recipeLoader.deleteRecipeFromGitHub(recipeName);
+      }
 
       notifyListeners();
     } catch (e) {
@@ -247,7 +259,8 @@ class AdminProvider with ChangeNotifier {
       }
 
       // Step 2: Check if we should sync with Firebase
-      final shouldSync = await _localDb.shouldSyncWithFirebase('articles', maxAge: const Duration(minutes: 5));
+      final shouldSync = await _localDb.shouldSyncWithFirebase('articles',
+          maxAge: const Duration(minutes: 5));
       if (!shouldSync && cachedArticles.isNotEmpty) {
         debugPrint('ℹ️ Using cached articles (recent sync)');
         return;
@@ -262,15 +275,16 @@ class AdminProvider with ChangeNotifier {
 
       // Step 4: Only update if Firebase has different data
       if (snapshot.docs.isNotEmpty) {
-        final firebaseArticles = snapshot.docs
-            .map((doc) => Article.fromFirestore(doc))
-            .toList();
+        final firebaseArticles =
+            snapshot.docs.map((doc) => Article.fromFirestore(doc)).toList();
 
         // Compare if data has changed
         bool hasChanges = _articles.length != firebaseArticles.length;
         if (!hasChanges && _articles.isNotEmpty) {
           // Check if any article has been updated
-          for (var i = 0; i < _articles.length && i < firebaseArticles.length; i++) {
+          for (var i = 0;
+              i < _articles.length && i < firebaseArticles.length;
+              i++) {
             if (_articles[i].id != firebaseArticles[i].id ||
                 _articles[i].createdAt != firebaseArticles[i].createdAt) {
               hasChanges = true;
@@ -344,11 +358,11 @@ class AdminProvider with ChangeNotifier {
     try {
       await _firestore.collection('articles').doc(articleId).delete();
       _articles.removeWhere((a) => a.id == articleId);
-      
+
       // Force refresh cache
       await _localDb.clearTable('articles');
       await loadArticles();
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting article: $e');
@@ -387,7 +401,8 @@ class AdminProvider with ChangeNotifier {
       final totalArticles = articlesSnapshot.docs.length;
 
       // Get total comments with breakdown
-      final commentsSnapshot = await _firestore.collection('recipe_comments').get();
+      final commentsSnapshot =
+          await _firestore.collection('recipe_comments').get();
       final totalComments = commentsSnapshot.docs.length;
       final pendingComments = commentsSnapshot.docs
           .where((doc) => doc.data()['status'] == CommentStatus.pending.name)
@@ -410,7 +425,7 @@ class AdminProvider with ChangeNotifier {
           .collection('diary')
           .where('date', isGreaterThan: Timestamp.fromDate(sevenDaysAgo))
           .get();
-      
+
       final activeUserIds = <String>{};
       for (var doc in recentDiarySnapshot.docs) {
         activeUserIds.add(doc.data()['userId'] ?? '');
@@ -460,10 +475,9 @@ class AdminProvider with ChangeNotifier {
           .orderBy('createdAt', descending: true)
           .get();
 
-      _allComments = snapshot.docs
-          .map((doc) => RecipeComment.fromFirestore(doc))
-          .toList();
-      
+      _allComments =
+          snapshot.docs.map((doc) => RecipeComment.fromFirestore(doc)).toList();
+
       // Keep pending list for backward compatibility
       _pendingComments = _allComments;
     } catch (e) {
@@ -560,7 +574,8 @@ class AdminProvider with ChangeNotifier {
   /// Approve a pending product
   Future<void> approveProduct(String productId, {String? adminNotes}) async {
     try {
-      await _pendingProductsService.approveProduct(productId, adminNotes: adminNotes);
+      await _pendingProductsService.approveProduct(productId,
+          adminNotes: adminNotes);
       _pendingProducts.removeWhere((p) => p.id == productId);
       notifyListeners();
     } catch (e) {
@@ -570,9 +585,11 @@ class AdminProvider with ChangeNotifier {
   }
 
   /// Reject a pending product
-  Future<void> rejectProduct(String productId, String reason, {String? adminNotes}) async {
+  Future<void> rejectProduct(String productId, String reason,
+      {String? adminNotes}) async {
     try {
-      await _pendingProductsService.rejectProduct(productId, reason, adminNotes: adminNotes);
+      await _pendingProductsService.rejectProduct(productId, reason,
+          adminNotes: adminNotes);
       _pendingProducts.removeWhere((p) => p.id == productId);
       notifyListeners();
     } catch (e) {
@@ -617,6 +634,21 @@ class AdminProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('Error getting pending products count: $e');
       return 0;
+    }
+  }
+
+  // Load recipes from JSON (Manual trigger)
+  Future<void> loadRecipesFromJSON(
+      {Function(String status, double progress)? onProgress}) async {
+    try {
+      await _recipeLoader.loadRecipes(onProgress: onProgress);
+      // Reload stats and recipes after loading
+      await loadAppStats();
+      await loadRecommendedRecipes();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading recipes from JSON: $e');
+      rethrow;
     }
   }
 }

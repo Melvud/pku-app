@@ -12,7 +12,7 @@ import 'providers/products_provider.dart';
 import 'providers/diary_provider.dart';
 import 'providers/recipes_provider.dart'; // ✅ Добавить импорт
 import 'providers/admin_provider.dart';
-import 'services/recipe_loader_service.dart';
+
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/articles/articles_screen.dart';
@@ -40,14 +40,6 @@ void main() async {
   );
 
   await initializeDateFormatting('ru', null);
-
-  // Auto-load recipes from assets
-  try {
-    final recipeLoader = RecipeLoaderService();
-    await recipeLoader.loadRecipes();
-  } catch (e) {
-    debugPrint('Failed to auto-load recipes: $e');
-  }
 
   runApp(
     MultiProvider(
